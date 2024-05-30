@@ -49,11 +49,11 @@ jobs:
             measure_url=`curl -A "$UA" -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -i \
               |grep location|awk '{print $2}'`
-            sleep 1
+            sleep 5
             while true; do
               r=`curl -A "$UA" -s $measure_url`
               case "$r" in
-                *in-progress*)  sleep 1; continue;;
+                *in-progress*)  sleep 5; continue;;
                 *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
                 *)              break;;
               esac
