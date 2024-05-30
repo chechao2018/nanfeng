@@ -46,12 +46,12 @@ jobs:
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
           touch valid_ips.txt
           while IFS= read -r ip; do
-            measure_url=`curl -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
-              -A $UA -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -i \
+            measure_url=`curl -A "$UA" -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
+              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -i \
               |grep location|awk '{print $2}'`
             sleep 1
             while true; do
-              r=`curl -s $measure_url -A $UA`
+              r=`curl -A "$UA" -s $measure_url`
               case "$r" in
                 *in-progress*)  sleep 1; continue;;
                 *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
