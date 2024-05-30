@@ -5,7 +5,7 @@ name: IP Workflow
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "0,30 * * * *"
+    - cron: "0 1 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "main" ]
@@ -43,12 +43,21 @@ jobs:
   
       - name: Ping IPs and filter
         run: |
+          UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
           touch valid_ips.txt
           while IFS= read -r ip; do
-            ping -c 3 -W 1 "$ip" > /dev/null
-            if [ $? -eq 0 ]; then
-              echo "$ip" >> valid_ips.txt
-            fi
+            measure_url=`curl -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
+              -A $UA -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -i \
+              |grep location|awk '{print $2}'`
+            sleep 1
+            while true; do
+              r=`curl -s $measure_url -A $UA`
+              case "$r" in
+                *in-progress*)  sleep 1; continue;;
+                *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
+                *)              break;;
+              esac
+            done
           done < ips.txt
   
       - name: SSL/TLS Handshake Test
