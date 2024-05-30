@@ -1,0 +1,74 @@
+# This is a basic workflow to help you get started with Actions
+
+name: IP Workflow
+
+# Controls when the workflow will run
+on:
+  schedule:
+    - cron: "0,30 * * * *"
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  #pull_request:
+  #  branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      # Runs a single command using the runners shell
+      #- name: Run a one-line script
+      #  run: echo Hello, world!
+
+      # Runs a set of commands using the runners shell
+      #- name: Run a multi-line script
+      #  run: |
+      #    echo Add other actions to build,
+      #    echo test, and deploy your project.
+      - name: Download IPs zip file, unzip, merge, uniq
+        run: |
+          curl -o ips.zip https://zip.baipiao.eu.org
+          unzip ips.zip -d ips
+          cat ips/*.txt | sort | uniq > ips.txt
+  
+      - name: Ping IPs and filter
+        run: |
+          touch valid_ips.txt
+          while IFS= read -r ip; do
+            ping -c 3 -W 1 "$ip" > /dev/null
+            if [ $? -eq 0 ]; then
+              echo "$ip" >> valid_ips.txt
+            fi
+          done < ips.txt
+  
+      - name: SSL/TLS Handshake Test
+        run: |
+          touch valid_ips_with_ssl.txt
+          while IFS= read -r ip; do
+            ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1|tr -s '\r\n' ' '`
+            case "$ret" in
+                *Verification:\ OK*) echo "$ip" >> valid_ips_with_ssl.txt ;;
+                *458*)               echo "$ip" >> valid_ips_with_ssl.txt ;; # unrecognized name
+                *410*)               echo 410 ;; # alert handshake failure
+                *verify\ error*)     echo error ;; # self signed certificate
+                *write:errno=0*)     echo retry ;;
+                *connect\ error*)    echo connect error ;;
+                *) echo $ret ;;
+            esac
+          done < valid_ips.txt
+          
+      - name: Send valid IPs to server
+        run: |
+          data=`echo `cat valid_ips_with_ssl.txt`|tr -s ' ' ','`
+          curl -X PUT "https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{CF_NAMESPACE_ID}}/values/proxys" \
+            -H "Authorization: Bearer ${{CF_API_TOKEN}}" -H "Content-Type: application/json" -d "$data"
