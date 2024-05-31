@@ -47,9 +47,9 @@ jobs:
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
           touch valid_ips.txt
           while IFS= read -r ip; do
-            measure_url=`curl -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
-              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -i \
-              |grep location|awk '{print $2}'`
+            measure_url=`curl -H "content-type: application/json" \
+              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
+              -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'`
             sleep 1
             while true; do
               echo url=$measure_url
@@ -62,6 +62,7 @@ jobs:
               esac
             done
           done < ips.txt
+          wc -l valid_ips.txt
   
       - name: SSL/TLS Handshake Test
         run: |
@@ -78,6 +79,7 @@ jobs:
                 *) echo $ret ;;
             esac
           done < valid_ips.txt
+          wc -l valid_ips_with_ssl.txt
           
       - name: Send valid IPs to server
         run: |
