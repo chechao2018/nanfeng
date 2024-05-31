@@ -46,7 +46,7 @@ jobs:
         run: |
           curl -o ips.zip https://zip.baipiao.eu.org
           unzip ips.zip -d ips
-          cat ips/31898-0-20*.txt | sort | uniq > ips.txt
+          cat ips/31898-0-20*.txt | sort | uniq > valid_ips.txt
           wc -l valid_ips.txt
   
       - name: SSL/TLS Handshake Test
