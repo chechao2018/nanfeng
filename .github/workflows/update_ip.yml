@@ -50,13 +50,9 @@ jobs:
             measure_url=`curl -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -i \
               |grep location|awk '{print $2}'`
-            echo url=$measure_url
-            if [ -z $measure_url ]; then
-              curl -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
-              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -iL
-            fi
             sleep 1
             while true; do
+              echo url=$measure_url
               r=`curl "$measure_url"`
               case "$r" in
                 *in-progress*)  sleep 1; continue;;
