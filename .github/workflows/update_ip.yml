@@ -5,15 +5,22 @@ name: IP Workflow
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "0 1 * * *"
+    - cron: "40 0 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
+  #push:
+  #  branches: [ "main" ]
   #pull_request:
   #  branches: [ "main" ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+
+env:
+  CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
+  CF_AUTH: Authorization:\ Bearer\ ${{secrets.CF_API_TOKEN}}
+  PROXYS: proxys
+  PROXYS_BAK: proxys_bak
+  PROXYS_UPDATED: proxys_updated
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -47,14 +54,13 @@ jobs:
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
           touch valid_ips.txt
           while IFS= read -r ip; do
-            measure_url=`curl -H "content-type: application/json" \
+            measure_url=`curl -H "content-type: application/json" -A "$UA" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
               -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\r\n'`
             sleep 1
             while true; do
               echo url=$measure_url ip=$ip
-              r=`curl "$measure_url"`
-              echo r=$r
+              r=`curl -A "$UA" "$measure_url"`
               case "$r" in
                 *in-progress*)  sleep 1; continue;;
                 *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
@@ -64,25 +70,38 @@ jobs:
           done < ips.txt
           wc -l valid_ips.txt
   
-      - name: SSL/TLS Handshake Test
+      - name: Backup original data, append into valid_ips.txt
         run: |
+          orig_data=`curl -H "{{env.CF_AUTH}}" "${{env.CF_KV_API}}/${{env.PROXYS}}"`
+          curl -X PUT -H "${{env.CF_AUTH}}" -d "$orig_data" "${{env.CF_KV_API}}/${{env.PROXYS_BAK}}"
+          echo $orig_data |tr -d '["]'|sed -r 's/,| /\n/' >> valid_ips.txt
+          wc -l valid_ips.txt
+
+      - name: SSL/TLS Handshake Test
+        run: |          
           touch valid_ips_with_ssl.txt
-          while IFS= read -r ip; do
-            ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1|tr -s '\r\n' ' '`
+          while IFS= read -r ip || [ $ip ]; do
+            ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1`
             case "$ret" in
                 *Verification:\ OK*) echo "$ip" >> valid_ips_with_ssl.txt ;;
                 *458*)               echo "$ip" >> valid_ips_with_ssl.txt ;; # unrecognized name
                 *410*)               echo 410 ;; # alert handshake failure
-                *verify\ error*)     echo error ;; # self signed certificate
-                *write:errno=0*)     echo retry ;;
                 *connect\ error*)    echo connect error ;;
+                #*verify\ error*)    echo error ;; # self signed certificate
+                #*write:errno=*)     echo retry ;;
                 *) echo $ret ;;
             esac
           done < valid_ips.txt
           wc -l valid_ips_with_ssl.txt
+
+      - name: Upload IPs file
+        uses: actions/upload-artifact@v4
+        with:
+          name: cf-proxys
+          path: valid_ips_with_ssl.txt
           
-      - name: Send valid IPs to server
+      - name: Update valid IPs to server
         run: |
-          data=`echo `cat valid_ips_with_ssl.txt`|tr -s ' ' ','`
-          curl -X PUT "https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values/proxys" \
-            -H "Authorization: Bearer ${{secrets.CF_API_TOKEN}}" -H "Content-Type: application/json" -d "$data"
+          data=`echo $(cat valid_ips_with_ssl.txt)`
+          curl -X PUT -H "${{env.CF_AUTH}}" -d "$data" "${{env.CF_KV_API}}/${{env.PROXYS}}"
+          curl -X PUT -H "${{env.CF_AUTH}}" -d "`date +%s%3N`" "${{env.CF_KV_API}}/${{emv.PROXYS_UPDATED}}"
