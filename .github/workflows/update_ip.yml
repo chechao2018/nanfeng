@@ -54,6 +54,7 @@ jobs:
             while true; do
               echo url=$measure_url
               r=`curl "$measure_url"`
+              echo r=$r
               case "$r" in
                 *in-progress*)  sleep 1; continue;;
                 *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
