@@ -5,10 +5,10 @@ name: IP Workflow
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "32 19 * * *"
+    - cron: "0 20 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
-  #push:
-  #  branches: [ "main" ]
+  push:
+    branches: [ "main" ]
   #pull_request:
   #  branches: [ "main" ]
 
@@ -46,44 +46,14 @@ jobs:
         run: |
           curl -o ips.zip https://zip.baipiao.eu.org
           unzip ips.zip -d ips
-          cat ips/*.txt | sort | uniq > ips.txt
-          wc -l ips.txt
-  
-      - name: Ping IPs and filter
-        run: |
-          UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
-          touch valid_ips.txt
-          while IFS= read -r ip; do
-            measure_url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
-              -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\r\n'`
-            sleep 1
-            while true; do
-              echo url=$measure_url ip=$ip
-              r=`curl -A "$UA" "$measure_url"`
-              case "$r" in
-                *in-progress*)  sleep 1; continue;;
-                *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
-                *)              break;;
-              esac
-            done
-          done < ips.txt
+          cat ips/31898-0-20*.txt | sort | uniq > ips.txt
           wc -l valid_ips.txt
   
-      - name: Backup original data, append into valid_ips.txt
-        run: |
-          orig_data=`curl -H "${{env.CF_AUTH}}" "${{env.CF_KV_API}}/${{env.PROXYS}}"`
-          [[ "$orig_data" == *error* ]] && echo $orig_data && return 1
-          curl -X PUT -H "${{env.CF_AUTH}}" -d "$orig_data" "${{env.CF_KV_API}}/${{env.PROXYS_BAK}}"
-          echo $orig_data |tr -d '["]'|sed -r 's/,| /\n/' >> valid_ips.txt
-          wc -l valid_ips.txt
-
       - name: SSL/TLS Handshake Test
         run: |          
           touch valid_ips_with_ssl.txt
           while IFS= read -r ip || [ $ip ]; do
-            ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1|tr -s '\n\r' ' '`
-            echo $ip
+            ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1`
             case "$ret" in
                 *Verification:\ OK*) echo "$ip" >> valid_ips_with_ssl.txt ;;
                 *458*)               echo "$ip" >> valid_ips_with_ssl.txt ;; # unrecognized name
@@ -91,7 +61,7 @@ jobs:
                 *connect\ error*)    echo connect error ;;
                 #*verify\ error*)    echo error ;; # self signed certificate
                 #*write:errno=*)     echo retry ;;
-                *) echo $ret ;;
+                *)                   echo "$ip $ret" ;;
             esac
           done < valid_ips.txt
           wc -l valid_ips_with_ssl.txt
@@ -99,11 +69,7 @@ jobs:
       - name: Upload IPs file
         uses: actions/upload-artifact@v4
         with:
-          name: cf-proxys
+          name: test
           path: valid_ips_with_ssl.txt
           
-      - name: Update valid IPs to server
-        run: |
-          data=`echo $(cat valid_ips_with_ssl.txt)`
-          curl -X PUT -H "${{env.CF_AUTH}}" -d "$data" "${{env.CF_KV_API}}/${{env.PROXYS}}"
-          curl -X PUT -H "${{env.CF_AUTH}}" -d "`date +%s%3N`" "${{env.CF_KV_API}}/${{env.PROXYS_UPDATED}}"
+  
