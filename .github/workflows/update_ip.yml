@@ -52,7 +52,7 @@ jobs:
               -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'`
             sleep 1
             while true; do
-              echo url=$measure_url
+              echo url=$measure_url ip=$ip
               r=`curl "$measure_url"`
               echo r=$r
               case "$r" in
