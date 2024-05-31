@@ -52,9 +52,11 @@ jobs:
       - name: SSL/TLS Handshake Test
         run: |          
           touch valid_ips_with_ssl.txt
+          cat valid_ips.txt
           while IFS= read -r ip || [ $ip ]; do
+            echo "start test $ip"
             ret=`echo|openssl s_client -connect $ip:443 -noservername -brief 2>&1`
-            echo "ret=$ret ip=$ip"
+            echo "ret=$ret"
             case "$ret" in
                 *Verification:\ OK*) echo $ip; echo "$ip" >> valid_ips_with_ssl.txt ;;
                 *458*)               echo "$ip" >> valid_ips_with_ssl.txt ;; # unrecognized name
@@ -64,6 +66,7 @@ jobs:
                 #*write:errno=*)     echo retry ;;
                 *)                   echo "$ip $ret" ;;
             esac
+            echo "end test $ip"
           done < valid_ips.txt
           wc -l valid_ips_with_ssl.txt
 
