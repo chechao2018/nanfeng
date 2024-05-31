@@ -49,7 +49,7 @@ jobs:
           while IFS= read -r ip; do
             measure_url=`curl -H "content-type: application/json" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
-              -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\n'`
+              -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\r\n'`
             sleep 1
             while true; do
               echo url=$measure_url ip=$ip
