@@ -44,9 +44,18 @@ jobs:
       #    echo test, and deploy your project.
       - name: Download IPs zip file, unzip, merge, uniq
         run: |
-          curl -o ips.zip https://zip.baipiao.eu.org
-          unzip ips.zip -d ips
-          cat ips/31898-0-*.txt | sort | uniq > valid_ips.txt
+          cat > valid_ips.txt <<-EOF
+138.2.18.184
+129.150.34.195
+130.162.61.18
+138.3.253.140
+141.148.219.182
+144.24.85.158
+146.56.162.25
+152.67.222.250
+152.70.155.147
+164.152.34.166
+EOF
           wc -l valid_ips.txt
   
       - name: SSL/TLS Handshake Test
@@ -55,7 +64,8 @@ jobs:
           cat valid_ips.txt
           while IFS= read -r ip || [ $ip ]; do
             echo "start test $ip"
-            ret=`echo|openssl s_client -connect $ip:443 -noservername -brief 2>&1`
+            echo|openssl s_client -connect $ip:443 -noservername -brief >ssl.out 2>&1`
+            ret=`cat ssl.out`
             echo "ret=$ret"
             case "$ret" in
                 *Verification:\ OK*) echo $ip; echo "$ip" >> valid_ips_with_ssl.txt ;;
