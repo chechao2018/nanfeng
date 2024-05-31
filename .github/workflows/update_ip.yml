@@ -64,7 +64,7 @@ jobs:
           cat valid_ips.txt
           while IFS= read -r ip || [ $ip ]; do
             echo "start test $ip"
-            echo|openssl s_client -connect $ip:443 -noservername -brief >ssl.out 2>&1
+            echo|openssl s_client -connect $ip:443 -noservername -brief|tr -s '\n\r' ' ' >ssl.out 2>&1
             ret=`cat ssl.out`
             echo "ret=$ret"
             case "$ret" in
