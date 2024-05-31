@@ -41,7 +41,6 @@ jobs:
           unzip ips.zip -d ips
           cat ips/*.txt | sort | uniq > ips.txt
           wc -l ips.txt
-          curl --version
   
       - name: Ping IPs and filter
         run: |
@@ -51,6 +50,11 @@ jobs:
             measure_url=`curl -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -i \
               |grep location|awk '{print $2}'`
+            echo url=$measure_url
+            if [ -z $measure_url ]; then
+              curl -X POST "https://api.globalping.io/v1/measurements" -H "content-type: application/json" \
+              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' -iL
+            fi
             sleep 1
             while true; do
               r=`curl "$measure_url"`
