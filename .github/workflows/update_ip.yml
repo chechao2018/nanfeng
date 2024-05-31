@@ -5,7 +5,7 @@ name: IP Workflow
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "0 17 * * *"
+    - cron: "30 17 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   #push:
   #  branches: [ "main" ]
@@ -104,4 +104,4 @@ jobs:
         run: |
           data=`echo $(cat valid_ips_with_ssl.txt)`
           curl -X PUT -H "${{env.CF_AUTH}}" -d "$data" "${{env.CF_KV_API}}/${{env.PROXYS}}"
-          curl -X PUT -H "${{env.CF_AUTH}}" -d "`date +%s%3N`" "${{env.CF_KV_API}}/${{emv.PROXYS_UPDATED}}"
+          curl -X PUT -H "${{env.CF_AUTH}}" -d "`date +%s%3N`" "${{env.CF_KV_API}}/${{env.PROXYS_UPDATED}}"
