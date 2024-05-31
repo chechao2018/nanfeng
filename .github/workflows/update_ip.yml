@@ -56,7 +56,7 @@ jobs:
             ret=`echo|openssl s_client -connect $ip:443 -noservername -brief 2>&1`
             echo "ret=$ret ip=$ip"
             case "$ret" in
-                *Verification:\ OK*) echo "$ip" >> valid_ips_with_ssl.txt ;;
+                *Verification:\ OK*) echo $ip; echo "$ip" >> valid_ips_with_ssl.txt ;;
                 *458*)               echo "$ip" >> valid_ips_with_ssl.txt ;; # unrecognized name
                 *410*)               echo 410 ;; # alert handshake failure
                 *connect\ error*)    echo connect error ;;
