@@ -96,7 +96,7 @@ jobs:
           while IFS= read -r ip || [ $ip ]; do
             retry=false
             while true; do
-              ret=`echo|openssl s_client -connect $ip:443 --noservername -brief 2>&1|tr -s '\n\r' ' '`
+              ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1|tr -s '\n\r' ' '`
               case "$ret" in
                 *410*|*write:errno=*)  # 410: alert handshake failure
                   echo $ret ; 
