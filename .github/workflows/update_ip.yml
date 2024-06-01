@@ -127,7 +127,7 @@ jobs:
             curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
               -d "$ret" "$CF_KV_API/$PROXYS_BAK"
             echo $ret |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
-            cat valid_ips.txt | sort | uniq >> valid_ips.txt
+            cat valid_ips.txt | sort | uniq > valid_ips.txt
             wc -l valid_ips.txt
           fi
 
