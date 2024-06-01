@@ -85,9 +85,9 @@ jobs:
           else
             #curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
             echo "$ret" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
-            cat valid_ips.txt | sort | uniq > tmp.txt
-            mv tmp.txt valid_ips.txt
-            wc -l valid_ips.txt
+            #cat valid_ips.txt | sort | uniq > tmp.txt
+            #mv tmp.txt valid_ips.txt
+            #wc -l valid_ips.txt
           fi
 
       - name: SSL/TLS Handshake Test
@@ -98,10 +98,9 @@ jobs:
             while true; do
               ret=`echo|openssl s_client -connect $ip:443 --noservername -brief 2>&1|tr -s '\n\r' ' '`
               case "$ret" in
-                *410*|*write:errno=*)  
+                *410*|*write:errno=*)  # 410: alert handshake failure
                   echo $ret ; 
-                  $retry || (retry=true && echo "retry $ip" && continue) 
-                  ;; # 410: alert handshake failure
+                  ! $retry && retry=true && echo "retry $ip" && continue ;;
                 *Verification:\ OK*) echo "$ip" >> valid_ips_with_ssl.txt ;;
                 *458*)               echo "$ip" >> valid_ips_with_ssl.txt ;; # unrecognized name                
                 *connect\ error*)    echo connect error ;;
