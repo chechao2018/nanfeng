@@ -99,7 +99,7 @@ jobs:
               ret=`echo|openssl s_client -connect $ip:443 --noservername -brief 2>&1|tr -s '\n\r' ' '`
               case "$ret" in
                 *410*|*write:errno=*)  
-                  $echo $ret ; 
+                  echo $ret ; 
                   $retry || (retry=true && echo "retry $ip" && continue) 
                   ;; # 410: alert handshake failure
                 *Verification:\ OK*) echo "$ip" >> valid_ips_with_ssl.txt ;;
