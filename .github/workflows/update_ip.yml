@@ -119,7 +119,7 @@ jobs:
   
       - name: Backup original data, append into valid_ips.txt
         run: |
-          echo "CF_AUTH=Authorization: Bearer ${{secrets.CF_API_TOKEN}}" >> $GITHUB_ENV
+          echo 'CF_AUTH="Authorization: Bearer '${{secrets.CF_API_TOKEN}}'"' >> $GITHUB_ENV
           ret=`curl -H "${{CF_AUTH}}" "${{CF_KV_API}}/${{PROXYS}}"`
           if [[ "$orig_data" == *error* ]]; then
             echo $ret
