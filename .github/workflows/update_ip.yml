@@ -120,13 +120,15 @@ jobs:
   
       - name: Backup original data, append into valid_ips.txt
         run: |
+          wc -l valid_ips.txt
           ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
+          echo $ret
           if [[ "$orig_data" == *error* ]]; then
             echo $ret
           else
             curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
               -d "$ret" "$CF_KV_API/$PROXYS_BAK"
-            echo $ret |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
+            echo "$ret" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
             cat valid_ips.txt | sort | uniq > valid_ips.txt
             wc -l valid_ips.txt
           fi
