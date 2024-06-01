@@ -5,7 +5,7 @@ name: IP Workflow
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "0 21 * * *"
+    - cron: "25 8 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   #push:
   #  branches: [ "main" ]
@@ -17,7 +17,6 @@ on:
 
 env:
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
-  CF_AUTH: Authorization:\ Bearer\ ${{secrets.CF_API_TOKEN}}
   PROXYS: proxys
   PROXYS_BAK: proxys_bak
   PROXYS_UPDATED: proxys_updated
@@ -42,42 +41,93 @@ jobs:
       #  run: |
       #    echo Add other actions to build,
       #    echo test, and deploy your project.
-      - name: Download IPs zip file, unzip, merge, uniq
+      - name: test data
         run: |
-          curl -o ips.zip https://zip.baipiao.eu.org
-          unzip ips.zip -d ips
-          cat ips/*.txt | sort | uniq > ips.txt
-          wc -l ips.txt
-  
-      - name: Ping IPs and filter
-        run: |
-          UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
-          touch valid_ips.txt
-          while IFS= read -r ip; do
-            measure_url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
-              -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\n\r'`
-            sleep 2
-            while true; do
-              echo url=$measure_url
-              r=`curl -A "$UA" -s "$measure_url"`
-              case "$r" in
-                *in-progress*)  sleep 1; continue;;
-                *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
-                *)              break;;
-              esac
-            done
-          done < ips.txt
-          wc -l valid_ips.txt
+          cat > valid_ips.txt <<EOF
+          8.219.123.11
+          8.219.5.10
+          8.219.87.30
+          8.219.86.200
+          8.219.11.158
+          8.222.187.4
+          8.222.184.198
+          8.219.235.164
+          8.219.170.232
+          8.219.198.139
+          8.219.84.214
+          8.219.99.169
+          8.219.107.135
+          47.245.126.151
+          8.219.193.202
+          8.219.177.205
+          8.219.161.129
+          8.219.174.142
+          8.219.124.227
+          8.219.4.122
+          8.219.50.180
+          8.219.83.71
+          8.219.42.72
+          8.222.156.242
+          8.222.174.108
+          8.222.160.176
+          8.222.136.247
+          8.219.220.88
+          8.219.139.13
+          8.219.191.40
+          8.219.113.232
+          8.219.189.143
+          8.222.191.138
+          47.245.102.52
+          8.219.100.168
+          8.219.93.5
+          8.219.83.201
+          8.219.98.13
+          8.219.78.188
+          8.219.51.211
+          8.222.167.147
+          8.222.183.242
+          8.219.210.57
+          8.219.201.245
+          8.219.208.104
+          8.219.110.81
+          8.219.122.55
+          8.219.126.240
+          8.219.142.191
+          8.219.111.147
+          8.222.214.231
+          8.222.215.228
+          8.219.97.50
+          8.222.165.117
+          8.222.144.50
+          8.219.229.190
+          47.245.118.70
+          8.219.120.87
+          8.219.1.92
+          8.219.67.133
+          8.219.103.65
+          8.219.240.160
+          47.245.114.163
+          8.219.209.14
+          8.219.110.248
+          8.219.199.220
+          8.219.202.130
+          8.219.111.175
+          8.222.208.38
+          8.219.77.222
+          8.219.237.250
+          EOF
   
       - name: Backup original data, append into valid_ips.txt
         run: |
-          orig_data=`curl -H "${{env.CF_AUTH}}" "${{env.CF_KV_API}}/${{env.PROXYS}}"`
-          [[ "$orig_data" == *error* ]] && echo $orig_data && return 1
-          curl -X PUT -H "${{env.CF_AUTH}}" -d "$orig_data" "${{env.CF_KV_API}}/${{env.PROXYS_BAK}}"
-          echo $orig_data |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
-          cat valid_ips.txt | sort | uniq > valid_ips.txt
-          wc -l valid_ips.txt
+          echo "CF_AUTH=Authorization: Bearer ${{secrets.CF_API_TOKEN}}" >> $GITHUB_ENV
+          ret=`curl -H "${{CF_AUTH}}" "${{CF_KV_API}}/${{PROXYS}}"`
+          if [[ "$orig_data" == *error* ]]; then
+            echo $ret
+          else
+            curl -X PUT -H "${{CF_AUTH}}" -d "$ret" "${{env.CF_KV_API}}/${{PROXYS_BAK}}"
+            echo $ret |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
+            cat valid_ips.txt | sort | uniq > valid_ips.txt
+            wc -l valid_ips.txt
 
       - name: SSL/TLS Handshake Test
         run: |          
@@ -105,5 +155,5 @@ jobs:
       - name: Update valid IPs to server
         run: |
           data=`echo $(cat valid_ips_with_ssl.txt)`
-          curl -X PUT -H "${{env.CF_AUTH}}" -d "$data" "${{env.CF_KV_API}}/${{env.PROXYS}}"
-          curl -X PUT -H "${{env.CF_AUTH}}" -d "`date +%s%3N`" "${{env.CF_KV_API}}/${{env.PROXYS_UPDATED}}"
+          curl -X PUT -H "${{CF_AUTH}}" -d "$data" "${{CF_KV_API}}/${{PROXYS}}"
+          curl -X PUT -H "${{CF_AUTH}}" -d "`date +%s%3N`" "${{CF_KV_API}}/${{PROXYS_UPDATED}}"
