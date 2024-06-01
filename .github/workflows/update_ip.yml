@@ -119,12 +119,12 @@ jobs:
   
       - name: Backup original data, append into valid_ips.txt
         run: |
-          echo 'CF_AUTH="Authorization: Bearer '${{secrets.CF_API_TOKEN}}'"' >> $GITHUB_ENV
-          ret=`curl -H "${{CF_AUTH}}" "${{CF_KV_API}}/${{PROXYS}}"`
+          ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "${{CF_KV_API}}/${{PROXYS}}"`
           if [[ "$orig_data" == *error* ]]; then
             echo $ret
           else
-            curl -X PUT -H "${{CF_AUTH}}" -d "$ret" "${{env.CF_KV_API}}/${{PROXYS_BAK}}"
+            curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+              -d "$ret" "${{env.CF_KV_API}}/${{PROXYS_BAK}}"
             echo $ret |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
             cat valid_ips.txt | sort | uniq > valid_ips.txt
             wc -l valid_ips.txt
@@ -155,5 +155,7 @@ jobs:
       - name: Update valid IPs to server
         run: |
           data=`echo $(cat valid_ips_with_ssl.txt)`
-          curl -X PUT -H "${{CF_AUTH}}" -d "$data" "${{CF_KV_API}}/${{PROXYS}}"
-          curl -X PUT -H "${{CF_AUTH}}" -d "`date +%s%3N`" "${{CF_KV_API}}/${{PROXYS_UPDATED}}"
+          curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+            -d "$data" "${{CF_KV_API}}/${{PROXYS}}"
+          curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+            -d "`date +%s%3N`" "${{CF_KV_API}}/${{PROXYS_UPDATED}}"
