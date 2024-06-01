@@ -5,7 +5,7 @@ name: IP Workflow
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "25 8 * * *"
+    - cron: "0 19 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
   #  branches: [ "main" ]
@@ -41,40 +41,32 @@ jobs:
       #  run: |
       #    echo Add other actions to build,
       #    echo test, and deploy your project.
-      - name: test data
+      - name: Download IPs zip file, unzip, merge, uniq
         run: |
-          cat > valid_ips.txt <<EOF
-          47.245.114.163
-          8.219.103.65
-          8.219.110.248
-          8.219.111.147
-          8.219.111.175
-          8.219.122.55
-          8.219.124.227
-          8.219.126.240
-          8.219.142.191
-          8.219.161.129
-          8.219.170.232
-          8.219.174.142
-          8.219.193.202
-          8.219.198.139
-          8.219.199.220
-          8.219.201.245
-          8.219.235.164
-          8.219.237.250
-          8.219.240.160
-          8.219.4.122
-          8.219.42.72
-          8.219.5.10
-          8.219.50.180
-          8.219.51.211
-          8.219.67.133
-          8.219.84.214
-          8.219.98.13
-          8.222.187.4
-          8.222.208.38
-          8.222.214.231
-          EOF
+          curl -o ips.zip https://zip.baipiao.eu.org
+          unzip ips.zip -d ips
+          cat ips/*.txt | sort | uniq > ips.txt
+          wc -l ips.txt
+  
+      - name: Ping IPs and filter
+        run: |
+          UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
+          touch valid_ips.txt
+          while IFS= read -r ip; do
+            measure_url=`curl -H "content-type: application/json" -A "$UA" \
+              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
+              -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\n\r'`
+            sleep 2
+            while true; do
+              echo url=$measure_url
+              r=`curl -A "$UA" -s "$measure_url"`
+              case "$r" in
+                *in-progress*)  sleep 1; continue;;
+                *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
+                *)              break;;
+              esac
+            done
+          done < ips.txt
           wc -l valid_ips.txt
   
       - name: Backup original data, append into valid_ips.txt
