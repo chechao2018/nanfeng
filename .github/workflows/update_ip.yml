@@ -116,6 +116,7 @@ jobs:
           8.219.77.222
           8.219.237.250
           EOF
+          cat valid_ips.txt
   
       - name: Backup original data, append into valid_ips.txt
         run: |
@@ -155,8 +156,10 @@ jobs:
           
       - name: Update valid IPs to server
         run: |
-          data=`echo $(cat valid_ips_with_ssl.txt)`
-          curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
-            -d "$data" "$CF_KV_API/$PROXYS"
-          curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
-            -d "`date +%s%3N`" "$CF_KV_API/$PROXYS_UPDATED"
+          if [ -s valid_ips_with_ssl.txt ]; then
+            data=`echo $(cat valid_ips_with_ssl.txt)`
+            curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+              -d "$data" "$CF_KV_API/$PROXYS"
+            curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+              -d "`date +%s%3N`" "$CF_KV_API/$PROXYS_UPDATED"
+          fi
