@@ -100,7 +100,8 @@ jobs:
               case "$ret" in
                 *410*|*write:errno=*)  
                   $echo $ret ; 
-                  $retry || (retry=true && echo "retry $ip" && continue) ;; # 410: alert handshake failure
+                  $retry || (retry=true && echo "retry $ip" && continue) 
+                  ;; # 410: alert handshake failure
                 *Verification:\ OK*) echo "$ip" >> valid_ips_with_ssl.txt ;;
                 *458*)               echo "$ip" >> valid_ips_with_ssl.txt ;; # unrecognized name                
                 *connect\ error*)    echo connect error ;;
