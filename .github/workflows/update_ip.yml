@@ -121,9 +121,9 @@ jobs:
       - name: Update valid IPs to server
         run: |
           if [ -s valid_ips_with_ssl.txt ]; then
-            data=`echo $(cat valid_ips_with_ssl.txt)`
-            curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
-              -d "$data" "$CF_KV_API/$PROXYS"
-            curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
-              -d "`date +%s%3N`" "$CF_KV_API/$PROXYS_UPDATED"
+            #data=`echo $(cat valid_ips_with_ssl.txt)`
+            #curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+            #  -d "$data" "$CF_KV_API/$PROXYS"
+            #curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+            #  -d "`date +%s%3N`" "$CF_KV_API/$PROXYS_UPDATED"
           fi
