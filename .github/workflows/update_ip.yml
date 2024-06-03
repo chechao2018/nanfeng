@@ -56,7 +56,7 @@ jobs:
             measure_url=`curl -H "content-type: application/json" -A "$UA" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
               -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\n\r'`
-            sleep 1.5
+            sleep 1
             while true; do
               echo url=$measure_url
               r=`curl -A "$UA" -s "$measure_url"`
@@ -71,10 +71,19 @@ jobs:
   
       - name: Backup original data, append into valid_ips.txt
         run: |
+          bak=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS_BAK"`
           ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
-          [[ "$orig_data" == *error* ]] && echo $ret && exit
-          curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
-          echo "$ret" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
+          if [[ "$bak" == *error* ]]; then 
+            echo $bak
+          else
+            [ ! -z "$bak" ] && echo "$bak" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
+          fi
+          if [[ "$ret" == *error* ]]; then
+            echo $ret
+          elif [ ! -z "$ret" ]; then
+            echo "$bak" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
+            curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
+          fi
           cat valid_ips.txt | sort | uniq > tmp.txt
           mv tmp.txt valid_ips.txt
           wc -l valid_ips.txt
@@ -92,9 +101,9 @@ jobs:
                   ! $retry && retry=true && echo "retry $ip" && continue ;;
                 *Verification:\ OK*) echo "$ip" >> ips_with_ssl.txt ;;
                 *458*)               echo "$ip" >> ips_with_ssl.txt ;; # unrecognized name                
-                *connect\ error*)    echo connect error ;;
-                # (438)alert internal error, self signed certificate, expired, unable to get local issuer certificate
-                #*verify\ error*)    echo error ;; 
+                #(438)alert internal error, self signed certificate, expired, unable to get local issuer certificate
+                #*verify\ error*)    echo verify error ;; 
+                #*connect\ error*)   echo connect error ;;
                 *)                   echo "$ip $ret" ;;
               esac
               break;
