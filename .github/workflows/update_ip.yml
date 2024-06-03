@@ -71,19 +71,15 @@ jobs:
   
       - name: Backup original data, append into valid_ips.txt
         run: |
-          bak=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS_BAK"`
-          ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
-          if [[ "$bak" == *error* ]]; then 
-            echo $bak
-          else
-            [ ! -z "$bak" ] && echo "$bak" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
-          fi
-          if [[ "$ret" == *error* ]]; then
-            echo $ret
-          elif [ ! -z "$ret" ]; then
-            echo "$bak" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
-            curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
-          fi
+          for key in $PROXYS_BAK $PROXYS; do
+            ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$key"`
+            if [[ "$ret" == *error* ]]; then
+              echo $ret
+            elif [ ! -z "$ret" ]; then
+              echo "$ret" |tr -d '["]'|sed -r 's/,| /\n/g' >> valid_ips.txt
+              [ $key == $PROXYS ] && curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
+            fi
+          done
           cat valid_ips.txt | sort | uniq > tmp.txt
           mv tmp.txt valid_ips.txt
           wc -l valid_ips.txt
