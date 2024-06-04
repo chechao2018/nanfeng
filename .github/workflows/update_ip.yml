@@ -96,7 +96,7 @@ jobs:
                   echo $ret ; 
                   ! $retry && retry=true && echo "retry $ip" && continue ;;
                 *Verification:\ OK*) echo "$ip" >> ips_with_ssl.txt ;;
-                *458*)               echo "$ip" >> ips_with_ssl.txt ;; # unrecognized name                
+                #*458*)              echo "$ip" >> ips_with_ssl.txt ;; # unrecognized name                
                 #(438)alert internal error, self signed certificate, expired, unable to get local issuer certificate
                 #*verify\ error*)    echo verify error ;; 
                 #*connect\ error*)   echo connect error ;;
