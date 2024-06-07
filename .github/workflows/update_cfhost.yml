@@ -1,0 +1,86 @@
+# This is a basic workflow to help you get started with Actions
+
+name: cfhost.json Workflow
+
+# Controls when the workflow will run
+on:
+  schedule:
+    - cron: "30 16 * * *"
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  #paths-ignore: 
+  #  - 'coverage/**'
+  #  - 'dist/**'
+  #pull_request:
+  #  branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
+  CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
+  CFHOST: cfhost
+  ENTRY: _worker.js
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      # Runs a single command using the runners shell
+      #- name: Run a one-line script
+      #  run: echo Hello, world!
+
+      # Runs a set of commands using the runners shell
+      #- name: Run a multi-line script
+      #  run: |
+      #    echo Add other actions to build,
+      #    echo test, and deploy your project.
+      - name: get cfhost, merge
+        run: |
+          ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$CFHOST"`
+          if [[ "$ret" == *error* ]]; then
+            echo $ret
+          elif [ ! -z "$ret" ]; then
+            #echo `cat cfhost.json`$ret|sed 's/\]\[/,/' > tmp.json
+            cat cfhost.json|tr -d '[]'|sed -r 's/,| /\n/g' > tmp.txt
+            echo $ret|tr -d '[]'|sed -r 's/,| /\n/g'      >> tmp.txt
+            echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > cfhost.json
+            echo 'update_cfhost=true' >> $GITHUB_ENV
+          fi
+          
+      - name: git commit cfhost.json
+        run: |          
+          $update_cfhost || exit
+          git config --global user.name "geeksnail"
+          git config --global user.email "geeksnail@outlook.com"
+          git add cfhost.json
+          git commit -m "updated cfhost"
+          git push
+          
+      - name: set up node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 19
+          
+      - name: build worker
+        run: |
+          npm i -D esbuild
+          node build/build.js 
+          
+      - name: deploy worker script
+        run: |
+          [ -s "dist/${{ENTRY}}" ] || exit;
+          curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+            -H 'Content-Type: multipart/form-data' \
+            --form "worker.js=@dist/${{ENTRY}};type=application/javascript+module" \
+            --form 'metadata={"main_module":"'${{ENTRY}}'"}' \
+            --url $CF_SCRIPT_API/content

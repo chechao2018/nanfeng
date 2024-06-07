@@ -1,0 +1,24 @@
+{
+  "name": "cf",
+  "version": "1.0.0",
+  "description": "",
+  "main": "_worker.js",
+  "scripts": {
+    "dev": "wrangler dev _worker.js",
+		"deploy": "HTTP_PROXY=http://127.0.0.1:10809 wrangler deploy v2",
+		"build": "wrangler build",
+		"esbuild": "node build/build.js"
+  },
+	"devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+		"esbuild": "0.17.19"
+	},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GeekSnail/cf.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "homepage": "https://github.com/GeekSnail/cf#readme"
+}
