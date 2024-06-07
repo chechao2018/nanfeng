@@ -78,9 +78,9 @@ jobs:
           
       - name: deploy worker script
         run: |
-          [ -s "dist/${{ENTRY}}" ] || exit;
+          [ -s "dist/$ENTRY" ] || exit;
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -H 'Content-Type: multipart/form-data' \
-            --form "worker.js=@dist/${{ENTRY}};type=application/javascript+module" \
-            --form 'metadata={"main_module":"'${{ENTRY}}'"}' \
+            --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
+            --form 'metadata={"main_module":"'$ENTRY'"}' \
             --url $CF_SCRIPT_API/content
