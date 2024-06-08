@@ -45,7 +45,8 @@ jobs:
       #  run: |
       #    echo Add other actions to build,
       #    echo test, and deploy your project.
-      - name: get cfhost, merge
+      - id: s1
+        name: get cfhost, merge
         run: |
           ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$CFHOST"`
           if [[ "$ret" == *error* ]]; then
@@ -58,16 +59,24 @@ jobs:
             echo 'update_cfhost=true' >> $GITHUB_ENV
           fi
           
-      - name: git commit cfhost.json
+      - id: s2
+        name: git commit cfhost.json
         run: |          
-          [ $update_cfhost ] || echo "nothing update!" && exit
-          git config user.name "GitHub Actions Bot"
-          git config user.email "<>"
-          git add cfhost.json
-          git commit -m "updated cfhost"
-          git push
+          if [ $update_cfhost ]; then
+            git config user.name "GitHub Actions Bot"
+            git config user.email "<>"
+            git add cfhost.json
+            git commit -m "updated cfhost"
+            git push
+          else
+            echo "cfhost not update"
+            [ `git diff --name-only ${{ github.event.before }} ${{ github.event.after }}|grep -v '\.github/*'|wc -l` -eq 0 ] 
+              && echo "worker code nothing update" && exit 1
+          fi
           
-      - name: set up node.js
+      - id: s3
+        if: steps.s2.conclusion == 'success'
+        name: set up node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
