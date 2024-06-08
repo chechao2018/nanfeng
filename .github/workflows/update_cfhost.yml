@@ -60,7 +60,7 @@ jobs:
           
       - name: git commit cfhost.json
         run: |          
-          [ $update_cfhost ] || (echo "nothing update" && exit)
+          [ $update_cfhost ] || echo "nothing update!" && exit
           git config user.name "GitHub Actions Bot"
           git config user.email "<>"
           git add cfhost.json
@@ -74,12 +74,13 @@ jobs:
           
       - name: build worker
         run: |
+          echo "${{github.event.commits[0]}}"
           npm i
           npm run esbuild
           
       - name: deploy worker script
         run: |
-          [ -s "dist/$ENTRY" ] || (echo "$ENTRY not found!" && exit);
+          [ -s "dist/$ENTRY" ] || echo "$ENTRY not found!" && exit;
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
