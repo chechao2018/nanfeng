@@ -22,6 +22,7 @@ env:
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
   CFHOST: cfhost
+  SCRIPT: v2
   ENTRY: _worker.js
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -73,8 +74,8 @@ jobs:
           
       - name: build worker
         run: |
-          npm i -D esbuild
-          node build/build.js 
+          npm i
+          npm run esbuild
           
       - name: deploy worker script
         run: |
@@ -83,4 +84,4 @@ jobs:
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
             --form 'metadata={"main_module":"'$ENTRY'"}' \
-            --url $CF_SCRIPT_API/content
+            --url $CF_SCRIPT_API/$SCRIPT/content

@@ -5,9 +5,9 @@
   "main": "_worker.js",
   "scripts": {
     "dev": "wrangler dev _worker.js",
-		"deploy": "HTTP_PROXY=http://127.0.0.1:10809 wrangler deploy v2",
+		"deploy": "HTTP_PROXY=http://127.0.0.1:10809 wrangler deploy",
 		"build": "wrangler build",
-		"esbuild": "node build/build.js"
+		"esbuild": "node build.js"
   },
 	"devDependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
