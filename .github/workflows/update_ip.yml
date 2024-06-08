@@ -76,7 +76,7 @@ jobs:
             if [[ "$ret" == *error* ]]; then
               echo $ret
             elif [ ! -z "$ret" ]; then
-              echo "$ret" |tr -d '["]'|sed -r 's/, /\n/g' >> valid_ips.txt
+              echo "$ret" |tr -d '["]'|sed -r 's/, ?/\n/g' >> valid_ips.txt
               [ $key == $PROXYS ] && curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
             fi
           done
