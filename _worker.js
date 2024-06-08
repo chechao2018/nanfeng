@@ -19,7 +19,7 @@ let proxy = proxys[Math.floor(Math.random() * proxys.length)];
 // use single proxy instead of random
 // let proxy = 'cdn.xn--b6gac.eu.org';
 // ipv6 proxy example remove comment to use
-// let proxy = "[2a01:4f8:c2c:123f:64:5:6810:c55a]"
+let proxy6 = "2a01:4f8:c2c:123f:64:5:6810:c55a"
 let dohURL = 'https://cloudflare-dns.com/dns-query' // or https://dns.google/dns-query
 //const cfhost = ['cloudflare.com', 'ajax.cloudflare.com', 'community.cloudflare.com', 'cdnjs.cloudflare.com', 'challenges.cloudflare.com', 'time.cloudflare.com', 'performance.radar.cloudflare.com', 'www.cloudflare.com', 'cf-assets.www.cloudflare.com']
 const errorHost = ['26.26.26.2']
@@ -283,14 +283,14 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 		writer.releaseLock();
 		return tcpSocket;
 	}
-
+	
 	/**
 	 * Retries connecting to the remote address and port if the Cloudflare socket has no incoming data.
 	 * @returns {Promise<void>} A Promise that resolves when the retry is complete.
 	 */
 	async function retry(hit) {
 		hit || kvMap.tagHost(addressRemote)
-		const tcpSocket = await connectAndWrite(proxy || addressRemote, portRemote)
+		const tcpSocket = await connectAndWrite((v==6? proxy6: proxy) || addressRemote, portRemote)
 		tcpSocket.closed.catch(error => {
 			console.log('retry tcpSocket closed error', error);
 			if (portRemote == 443 && /HTTP|fetch/i.test(error)) {
@@ -305,8 +305,8 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 	}
 	// if cfhost.has(remote) -> retry proxy
 	// else -> direct connect, if need retry -> push remote to cfhost, retry
-	//|| inCfSubNet(addressRemote)
-	if (kvMap.cfhost.includes(addressRemote)) {
+	let v;
+	if (kvMap.cfhost.includes(addressRemote) || (v = inCfSubNet(addressRemote))) {
 		log(`Hit proxy for ${addressRemote}`)
 		retry(1);
 	} else  {

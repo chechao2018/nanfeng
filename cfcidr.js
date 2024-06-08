@@ -3,7 +3,7 @@ const cfcidr = [{"1":[[0,-1],[257,-1]],"8":[[1680,-2],[1682,-1],[2535,-1],[2708,
 
 // https://stackoverflow.com/questions/503052/how-to-check-if-ip-is-in-one-of-these-subnets
 export default function inCfSubNet(host, list = cfcidr) {
-	let ip, ipLeft = 0, ipMid = 0;
+	let ip, ipLeft = 0, ipMid = 0, r=false;
 	const ver = { 4: { partLen: 8, partShift: 256 }, 6: { partLen: 16, partShift: 65536 } };
 	const c = (o) => {
 		let i = 0;
@@ -20,11 +20,13 @@ export default function inCfSubNet(host, list = cfcidr) {
 		list = list[1]
 		ip = host.split(':').map(p=>p==''?0:Number('0x'+p)).slice(0, list['maxPrefixLen']/16);
 		if(! c(ver[6])) return false;
+		r = 6;
 	} else if (ip = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)) {
 		//let ip = host.split(".").map(Number);
 		list = list[0]
 		ip = ip.slice(1, 1+list['maxPrefixLen']/8).map(Number)
 		if(! c(ver[4])) return false;
+		r = 4;
 	} else return false;
   
 	if (ipMid < list[0][0])
@@ -34,7 +36,7 @@ export default function inCfSubNet(host, list = cfcidr) {
 	while (x <= y) {
 		mid = Math.floor((x + y) / 2);
 		if (ipMid == list[mid][0])
-			return true;
+			return r;
 		else if (ipMid < list[mid][0])
 			y = mid-1;
 		else
@@ -42,7 +44,7 @@ export default function inCfSubNet(host, list = cfcidr) {
 	}
 	// Match
 	let masked = ipMid & list[y][1];
-	return (masked ^ list[y][0]) == 0;
+	return (masked ^ list[y][0]) == 0 ? r : false;
 }
 
 /* console.time();
