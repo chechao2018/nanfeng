@@ -52,8 +52,8 @@ jobs:
             echo $ret
           elif [ ! -z "$ret" ]; then
             #echo `cat cfhost.json`$ret|sed 's/\]\[/,/' > tmp.json
-            cat cfhost.json|tr -d '[]'|sed -r 's/, /\n/g' > tmp.txt
-            echo $ret|tr -d '[]'|sed -r 's/, /\n/g'      >> tmp.txt
+            echo `cat cfhost.json`|tr -d '[]'|sed -r 's/, /\n/g' > tmp.txt
+            echo $ret|tr -d '[]'|sed -r 's/, /\n/g'             >> tmp.txt
             echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > cfhost.json
             echo 'update_cfhost=true' >> $GITHUB_ENV
           fi
@@ -70,7 +70,7 @@ jobs:
       - name: set up node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 19
+          node-version: 20
           
       - name: build worker
         run: |
