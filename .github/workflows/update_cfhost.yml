@@ -52,7 +52,7 @@ jobs:
           ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$CFHOST"`
           if [[ "$ret" == *error* ]]; then
             echo $ret
-          elif [ ! -z "$ret" ]; then
+          elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
             #echo `cat cfhost.json`$ret|sed 's/\]\[/,/' > tmp.json
             echo `cat cfhost.json`|tr -d '[]'|sed -r 's/, ?/\n/g' > tmp.txt
             echo $ret|tr -d '[]'|sed -r 's/, ?/\n/g'             >> tmp.txt

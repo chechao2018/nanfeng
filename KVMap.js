@@ -55,7 +55,7 @@ export default class KVMap {
 					r = difference(r, this._cfhost);
 					//update to KV
 					this.puttingCfhost = true;
-					this.KVOp(this.KEY_CFHOST, 'put', r).then(()=>{ this.puttingCfhost = false; })
+					this.KVOp(this.KEY_CFHOST, 'put', r.length?r:'').then(()=>{ this.puttingCfhost = false; })
 				}
 				this.cfhostFromKV = r;
 				this.cachedCfhost = r;
