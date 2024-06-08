@@ -90,15 +90,15 @@ jobs:
         run: |          
           touch ips_with_ssl.txt
           while IFS= read -r ip || [ $ip ]; do
-            retry=false
+            #retry=false
             while true; do
               ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1|tr -s '\n\r' ' '`
               case "$ret" in
-                *410*|*write:errno=*)  # 410: alert handshake failure
-                  echo $ret ; 
-                  ! $retry && retry=true && echo "retry $ip" && continue ;;
                 *Verification:\ OK*) echo "$ip" >> ips_with_ssl.txt ;;
                 #*458*)              echo "$ip" >> ips_with_ssl.txt ;; # unrecognized name                
+                #*410*|*write:errno=*)  # 410: alert handshake failure
+                #  echo $ret ; 
+                # ! $retry && retry=true && echo "retry $ip" && continue ;;
                 #(438)alert internal error, self signed certificate, expired, unable to get local issuer certificate
                 #*verify\ error*)    echo verify error ;; 
                 #*connect\ error*)   echo connect error ;;
