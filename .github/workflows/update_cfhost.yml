@@ -64,7 +64,7 @@ jobs:
       - id: s2
         name: git commit cfhost.json
         run: |          
-          if git diff; then
+          if git diff|grep $CFHOSTJSON; then
             git config user.name "GitHub Actions Bot"
             git config user.email "<>"
             git add $CFHOSTJSON
