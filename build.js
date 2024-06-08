@@ -111,12 +111,4 @@ const buildOptions = {
   logLevel: 'silent'
 };
 
-async function build() {
-	var result;
-	try {
-		result = await esbuild.build(buildOptions);
-	} catch (err) {
-		console.error(err);
-	}
-}
-build();
+esbuild.build(buildOptions).then(console.log)

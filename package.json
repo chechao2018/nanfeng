@@ -5,14 +5,14 @@
   "main": "_worker.js",
   "scripts": {
     "dev": "wrangler dev _worker.js",
-		"deploy": "HTTP_PROXY=http://127.0.0.1:10809 wrangler deploy",
-		"build": "wrangler build",
-		"esbuild": "node build.js"
+    "deploy": "HTTP_PROXY=http://127.0.0.1:10809 wrangler deploy",
+    "build": "wrangler build",
+    "esbuild": "node build.js"
   },
-	"devDependencies": {
+  "devDependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
-		"esbuild": "0.17.19"
+    "esbuild": "0.17.19"
 	},
   "repository": {
     "type": "git",
