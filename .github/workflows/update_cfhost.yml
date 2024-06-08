@@ -96,10 +96,9 @@ jobs:
           
       - name: deploy worker script
         run: |
-          [ -s "dist/$ENTRY" ] || echo "$ENTRY not found!" && exit;
+          [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
           curl -i -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
             --form 'metadata={"main_module":"'$ENTRY'"}' \
             --url $CF_SCRIPT_API/$SCRIPT/content
-          echo 'Finished'
