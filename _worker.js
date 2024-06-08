@@ -305,7 +305,8 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 	}
 	// if cfhost.has(remote) -> retry proxy
 	// else -> direct connect, if need retry -> push remote to cfhost, retry
-	if (kvMap.cfhost.includes(addressRemote) || inCfSubNet(addressRemote)) {
+	//|| inCfSubNet(addressRemote)
+	if (kvMap.cfhost.includes(addressRemote)) {
 		log(`Hit proxy for ${addressRemote}`)
 		retry(1);
 	} else  {

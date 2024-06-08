@@ -61,8 +61,8 @@ jobs:
       - name: git commit cfhost.json
         run: |          
           $update_cfhost || exit
-          git config --global user.name "geeksnail"
-          git config --global user.email "geeksnail@outlook.com"
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
           git add cfhost.json
           git commit -m "updated cfhost"
           git push
