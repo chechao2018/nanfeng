@@ -67,6 +67,7 @@ jobs:
             git push
           else
             echo "cfhost not update"
+            git diff --name-only ${{ github.event.before }} ${{ github.event.after }}|grep -v '\.git*'
             if git diff --name-only ${{ github.event.before }} ${{ github.event.after }}|grep -v '\.git*' ; then
               echo "worker code nothing update"
               gh run cancel ${{ github.run_id }}
