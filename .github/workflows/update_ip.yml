@@ -5,7 +5,7 @@ name: IP Workflow
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "0 13 * * *"
+    - cron: "0 4 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   #push:
   #  branches: [ "main" ]
@@ -17,9 +17,11 @@ on:
 
 env:
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
+  PING_API: https://api.globalping.io/v1/measurements
   PROXYS: proxys
   PROXYS_BAK: proxys_bak
   PROXYS_UPDATED: proxys_updated
+  
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -41,85 +43,75 @@ jobs:
       #  run: |
       #    echo Add other actions to build,
       #    echo test, and deploy your project.
-      - name: Download IPs zip file, unzip, merge, uniq
+      - name: download ip zip file, unzip, merge, uniq
         run: |
-          curl -o ips.zip https://zip.baipiao.eu.org
-          unzip ips.zip -d ips
-          cat ips/*.txt | sort | uniq > ips.txt
-          wc -l ips.txt
-  
-      - name: Ping IPs and filter
-        run: |
-          UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
-          touch valid_ips.txt
-          while IFS= read -r ip; do
-            measure_url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
-              -i "https://api.globalping.io/v1/measurements"|grep location|awk '{print $2}'|tr -d '\n\r'`
-            sleep 1
-            while true; do
-              echo url=$measure_url
-              r=`curl -A "$UA" -s "$measure_url"`
-              case "$r" in
-                *in-progress*)  sleep 1; continue;;
-                *loss\":0*)     echo "$ip" >> valid_ips.txt; break;;
-                *)              break;;
-              esac
-            done
-          done < ips.txt
-          wc -l valid_ips.txt
-  
-      - name: Backup original data, append into valid_ips.txt
+          curl -o ip.zip https://zip.baipiao.eu.org
+          unzip ip.zip -d ip
+          cat ip/*.txt | sort | uniq > ip.txt
+          echo zip `wc -l ip.txt` >> $GITHUB_STEP_SUMMARY
+          
+      - name: backup original data, merge
         run: |
           for key in $PROXYS_BAK $PROXYS; do
             ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$key"`
             if [[ "$ret" == *error* ]]; then
               echo $ret
             elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
-              echo "$ret" |tr -d '["]'|sed -r 's/, ?/\n/g' >> valid_ips.txt
+              echo "$ret" |tr -d '["]'|sed -r 's/, ?/\n/g' >> ip.txt
               if [ $key == $PROXYS ]; then
                 curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
               fi
             fi
           done
-          cat valid_ips.txt | sort | uniq > tmp.txt
-          mv tmp.txt valid_ips.txt
-          wc -l valid_ips.txt
-
-      - name: SSL/TLS Handshake Test
-        run: |          
-          touch ips_with_ssl.txt
-          while IFS= read -r ip || [ $ip ]; do
-            #retry=false
+          cat ip.txt | sort | uniq > tmp.txt
+          mv tmp.txt ip.txt
+          echo merge `wc -l ip.txt` >> $GITHUB_STEP_SUMMARY
+  
+      - name: http test, filter
+        run: |
+          UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
+          # ip port
+          measure(){
+            local ip=$1 port=$2 protocol=http
+            [ -z "$port" ] && port=443
+            [ $port -eq 443 ] && protocol=https
+            local measure_url=`curl -H "content-type: application/json" -A "$UA" \
+              -d '{"type":"http","target":"'$ip'","locations":[{"country":"HK","limit":2}],"measurementOptions":{"port":"'$port'","protocol":"'$protocol'"}}' \
+              -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
+            sleep 1
             while true; do
-              ret=`echo|openssl s_client -connect $ip:443 -brief 2>&1|tr -s '\n\r' ' '`
-              case "$ret" in
-                *Verification:\ OK*) echo "$ip" >> ips_with_ssl.txt ;;
-                #*458*)              echo "$ip" >> ips_with_ssl.txt ;; # unrecognized name                
-                #*410*|*write:errno=*)  # 410: alert handshake failure
-                #  echo $ret ; 
-                # ! $retry && retry=true && echo "retry $ip" && continue ;;
-                #(438)alert internal error, self signed certificate, expired, unable to get local issuer certificate
-                #*verify\ error*)    echo verify error ;; 
-                #*connect\ error*)   echo connect error ;;
-                *)                   echo "$ip $ret" ;;
+              echo $measure_url
+              r=`curl -A "$UA" -s "$measure_url"`
+              case "$r" in
+                *in-progress*)   sleep 1; continue;;
+                #*loss\":0*)      echo "$ip" >> valid_ip.txt; break;;
+                *authorized\":*) echo "$ip" >> ip$port.txt; break;;
+                *cloudflare*)    echo "$ip" >> ip$port.txt; break;;
+                *)               break;;
               esac
-              break;
             done
-          done < valid_ips.txt
-          wc -l ips_with_ssl.txt
+          }
+          while IFS= read -r ip; do
+            measure $ip 80
+            measure $ip 443
+          done < ip.txt
+          echo `wc -l ip80.txt` >> $GITHUB_STEP_SUMMARY
+          echo `wc -l ip443.txt` >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload IPs file
+      - name: upload ip file
         uses: actions/upload-artifact@v4
         with:
-          name: cf-proxys
-          path: ips_with_ssl.txt
+          name: cfproxys
+          path: |
+            ip443.txt
+            ip80.txt
           
-      - name: Update valid IPs to server
+      - name: update valid ip to server
         run: |
-          [ ! -s ips_with_ssl.txt ] && exit;
-          data=[$(echo `sed -r 's/^(.*)$/"\1"/' ips_with_ssl.txt`|tr -s ' ' ',')]
+          [ -s ip443.txt ] && data=[[$(echo `sed -r 's/^(.*)$/"\1"/' ip443.txt`|tr -s ' ' ',')]
+          [ -s ip80.txt ] && data=$data,[$(echo `sed -r 's/^(.*)$/"\1"/' ip80.txt`|tr -s ' ' ',')]]
+          [ -z "$data" ] && echo 'no ip data' && exit;
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
-            -d "$data" "$CF_KV_API/$PROXYS"
+            -d "$data" "$CF_KV_API/$PROXYS" >> $GITHUB_STEP_SUMMARY
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -d "`date +%s%3N`" "$CF_KV_API/$PROXYS_UPDATED"

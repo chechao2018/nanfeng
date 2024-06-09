@@ -17,35 +17,40 @@ function symmetricDifference(a, b, seperate=false) {
 		_a.has(e)? _a.delete(e): _b.add(e);
 	return seperate? [[..._a], [..._b]]: [..._a];
 }
-const randFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+export const randFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const delay = (t) => new Promise(resolve => { setTimeout(resolve, t); });
 
 export default class KVMap {
 	KV;
 	KEY_CFHOST = 'cfhost';
 	KEY_PROXYS = 'proxys';
+	
 	//initial entry
 	_proxys; _cfhost;
 	//cache
-	cachedProxys = []; cachedCfhost = []; 
+	cachedProxys80 = []; cachedProxys443 = [];
+	cachedCfhost = []; 
 	//source
 	cfhostFromKV = [];
+	
 	loadedProxys = false;
 	loadedCfhost = false;
 	puttingCfhost = false;
+	proxy;
 	constructor({KV, proxys = [], cfhost = []}) {
 		this.KV = KV;
 		this._proxys = proxys;
 		this._cfhost = cfhost;
+		this.proxy = this.randomProxy;
 	}
 	get proxys() {
-		return [...this._proxys, ...this.cachedProxys]
+		return { 443: [...this._proxys, ...this.cachedProxys443], 80: [...this._proxys, ...this.cachedProxys80]}
 	}
 	get cfhost() {
 		return [...this._cfhost, ...this.cachedCfhost]
 	}
 	get randomProxy() {
-		return randFrom(this.proxys);
+		return { 443: randFrom(this.proxys[443]), 80: randFrom(this.proxys[80]) }
 	}
 	loadCfhost() {
 		if (this.loadedCfhost) return;
@@ -66,27 +71,35 @@ export default class KVMap {
 		})
 	}
 	loadProxys() {
-		if (this.loadedProxys) 
-			return Promise.resolve(this.proxys);
+		if (this.loadedProxys) return Promise.resolve();
 		return this.KVOp(this.KEY_PROXYS, 'get').then(r => {
 			if (r) {
-				this.cachedProxys = r;
+				if (r[0] instanceof Array) {
+					this.cachedProxys443 = r[0];
+					this.cachedProxys80 = r[1];
+				} else {
+					this.cachedProxys443 = r;
+					this.cachedProxys80 = r;
+				}
 			}
+			this.proxy = this.randomProxy;
 			this.loadedProxys = true;
-			console.log(`KV ${this.KEY_PROXYS} loaded ${this.proxys.length}`)
+			console.log(`KV ${this.KEY_PROXYS} loaded ${this.proxys[443].length}(443),${this.proxys[80].length}(80)`)
 			return this.proxys;
 		})
 	}
-	async deleteProxy(proxy) {
+	async deleteProxy(host, port) {
+		if (port != 443 || port != 80) return;
 		while (! this.loadedProxys) {
 			console.log(`${this.KEY_PROXYS} not loaded! try wait 20ms`)
 			await delay(20);
 		}
-		let i = this.cachedProxys.indexOf(proxy);
+		let i = this['cachedProxys'+port].indexOf(host);
 		if (i < 0) return;
-		this.cachedProxys.splice(i, 1);
-		this.KVOp(this.KEY_PROXYS, 'put', this.cachedProxys)
-			.then(r => { console.log(`proxy ${proxy} deleted from KV`); })
+		this['cachedProxys'+port].splice(i, 1);
+		this.proxy[port] = randFrom(this.proxys[port]);
+		this.KVOp(this.KEY_PROXYS, 'put', [this.cachedProxys443,this.cachedProxys80])
+			.then(r => { console.log(`proxy ${host+':'+port} deleted from KV`); });
 	}
 	async tagHost(host) {
 		while (! this.loadedCfhost) {

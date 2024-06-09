@@ -1,6 +1,6 @@
 // @ts-ignore
 import { connect } from 'cloudflare:sockets';
-import KVMap, { inCfSubNet } from './KVMap';
+import KVMap, { inCfSubNet, randFrom } from './KVMap';
 import cfhost from './cfhost.json';
 
 if (! Set.prototype.toJSON)
@@ -15,7 +15,7 @@ const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn-
 const domains = ["fbi.gov","www.okcupid.com","www.gco.gov.qa","www.pcmag.com","www.visa.com.sg","www.sean-now.com","www.iplocation.net","www.wto.org","edtunnel-dgp.pages.dev","www.ipaddress.my","www.gov.ua","ip.sb","gur.gov.ua","www.visa.co.jp","www.visa.com.hk","www.zsu.gov.ua","www.digitalocean.com","japan.com","malaysia.com","russia.com","shopify.com","www.visa.com","www.visa.com.tw","iplocation.io","www.udemy.com","download.yunzhongzhuan.com","www.4chan.org","whatismyipaddress.com"]
 
 // if you want to use ipv6 or single proxy, please add comment at this line and remove comment at the next line
-let proxy = proxys[Math.floor(Math.random() * proxys.length)];
+let proxy = { 443: randFrom(proxys), 80: randFrom(proxys) };
 // use single proxy instead of random
 // let proxy = 'cdn.xn--b6gac.eu.org';
 // ipv6 proxy example remove comment to use
@@ -48,8 +48,8 @@ export default {
 				userID_Path = userID.split(',')[0];
 			}
 			kvMap.loadCfhost();
-			kvMap.loadProxys().then(r => proxy = kvMap.randomProxy);
-			console.log(`fetch() ${kvMap.proxys.length}, ${proxy}, ${kvMap.cfhost.length}`)
+			kvMap.loadProxys().then(r => proxy = kvMap.proxy);
+			console.log(`fetch() ${kvMap.proxys[443].length}(443) ${kvMap.proxys[80].length}(80), ${kvMap.cfhost.length}`)
 			const upgradeHeader = request.headers.get('Upgrade');
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
 				const url = new URL(request.url);
@@ -290,13 +290,12 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 	 */
 	async function retry(hit) {
 		hit || kvMap.tagHost(addressRemote)
-		const tcpSocket = await connectAndWrite((v==6? proxy6: proxy) || addressRemote, portRemote)
+		const tcpSocket = await connectAndWrite(proxy[portRemote] || addressRemote, portRemote)
 		tcpSocket.closed.catch(error => {
 			console.log('retry tcpSocket closed error', error);
-			if (portRemote == 443 && /HTTP|fetch/i.test(error)) {
-				kvMap.deleteProxy(proxy);
-				proxy = kvMap.randomProxy;
-				console.log(`update new proxy ${proxy}`);
+			if (/HTTP|fetch/i.test(error)) {
+				kvMap.deleteProxy(proxy, portRemote)
+				proxy = kvMap.proxy;
 			}
 		}).finally(() => {
 			safeCloseWebSocket(webSocket);
@@ -305,15 +304,14 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 	}
 	// if cfhost.has(remote) -> retry proxy
 	// else -> direct connect, if need retry -> push remote to cfhost, retry
-	let v;
-	if (kvMap.cfhost.includes(addressRemote) || (v = inCfSubNet(addressRemote))) {
-		log(`Hit proxy for ${addressRemote}`)
-		retry(1);
-	} else  {
+	if (! kvMap.cfhost.includes(addressRemote) && ! inCfSubNet(addressRemote)) {
 		const tcpSocket = await connectAndWrite(addressRemote, portRemote);
 		// when remoteSocket is ready, pass to websocket
 		// remote--> ws
 		remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, retry, log);
+	} else  {
+		log(`Hit proxy for ${addressRemote}`)
+		retry(1);
 	}
 }
 
