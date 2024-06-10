@@ -1,11 +1,11 @@
 # This is a basic workflow to help you get started with Actions
 
-name: cfhost host Workflow
+name: cfhost Workflow
 
 # Controls when the workflow will run
 on:
-  #schedule:
-  #  - cron: "0 * * * *"
+  schedule:
+    - cron: "0 * * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
   #  branches: [ "main" ]
@@ -18,17 +18,27 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      onWorkflowChange:
+        description: 'checking workflow file change'
+        required: false
+        default: false
+        type: boolean
+      deployPage:
+        description: 'deploy worker and page (default only worker)'
+        required: false
+        default: false
+        type: boolean
 
 env:
+  onWorkflowChange: ${{inputs.onWorkflowChange}}
+  deployPage: ${{inputs.deployPage}}
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
   CF_PROJECT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/pages/projects
   CFHOST: cfhost
   CFHOST_BAK: cfhost_bak
   CFHOSTJSON: cfhost.json
-  HOST: host
-  HOST_BAK: host_bak
-  HOSTJSON: host.json
   SCRIPT: v2
   PROJECT: v1
   ENTRY: _worker.js
@@ -49,7 +59,7 @@ jobs:
           fetch-depth: 0
           
       - id: s1
-        name: get cfhost host, merge, backup
+        name: get cfhost, merge, backup
         run: |
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$1"`
@@ -60,7 +70,7 @@ jobs:
               local bak=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$2"`
               if [[ ! "$bak" == *error* ]] && [ ! -z "$bak" ] && [ ! "$bak" = "[]" ]; then
                 echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
-                ret=`echo $ret$bak|sed 's/\]\[/,/'`
+                ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
               fi
               echo `cat $3`|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
               echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > $3
@@ -68,23 +78,26 @@ jobs:
                 -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
             fi
           }
+          echo "s1 merge backup" >> $GITHUB_STEP_SUMMARY
           merge_backup $CFHOST $CFHOST_BAK $CFHOSTJSON
-          merge_backup $HOST $HOST_BAK $HOSTJSON
           
       - id: s2
-        name: check change of cfhost.json, host.json, worker code
+        name: check change of cfhost.json, worker code
         env:
           GH_TOKEN: ${{ github.token }}
         run: |          
-          if ! git diff|grep "$CFHOSTJSON\|$HOSTJSON"; then
+          if ! git diff|grep "$CFHOSTJSON"; then
             # git config user.name "GitHub Actions Bot"
             # git config user.email "<>"
             # git add $CFHOSTJSON
             # git commit -m "updated cfhost"
             # git push
-            echo "cfhost and host not update" >> $GITHUB_STEP_SUMMARY
-            if ! git diff --name-only ${{ github.event.before }} ${{ github.event.after }}|grep -v '\.git*' ; then
-              echo "worker code nothing update" >> $GITHUB_STEP_SUMMARY
+            echo "s2 check change" >> $GITHUB_STEP_SUMMARY
+            echo "cfhost not update" >> $GITHUB_STEP_SUMMARY
+            dif="git diff --name-only ${{ github.event.before }} ${{ github.event.after }}"
+            [ $onWorkflowChange ] || dif="$dif|grep -v '\.git*'"
+            if ! `$dif` ; then
+              echo "code nothing update" >> $GITHUB_STEP_SUMMARY
               gh run cancel ${{ github.run_id }}
               gh run watch ${{ github.run_id }}
             fi
@@ -111,15 +124,16 @@ jobs:
       - name: deploy worker, page
         run: |
           [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
+          echo "s5 deploy" >> $GITHUB_STEP_SUMMARY
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
             --form 'metadata={"main_module":"'$ENTRY'"}' \
             --url $CF_SCRIPT_API/$SCRIPT/content | tail -n 4 >> $GITHUB_STEP_SUMMARY
             
-          curl -X POST -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+          [ $deployPage ] && curl -X POST -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -H 'Content-Type: multipart/form-data' \
-            --form "worker.js=@dist/$ENTRY;type=application/javascript" \
-            --form 'branch=test' \
+            --form "$ENTRY=@dist/$ENTRY;type=application/javascript" \
             --form 'manifest={}' \
+            --form 'branch=test' \
             --url $CF_PROJECT_API/$PROJECT/deployments | tail -n 4 >> $GITHUB_STEP_SUMMARY

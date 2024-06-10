@@ -4,7 +4,7 @@
   "description": "",
   "main": "_worker.js",
   "scripts": {
-    "dev": "wrangler dev _worker.js",
+    "dev": "wrangler dev _worker.js --compatibility-date=2024-05-24",
     "deploy": "HTTP_PROXY=http://127.0.0.1:10809 wrangler deploy",
     "build": "wrangler build",
     "esbuild": "node build.js"

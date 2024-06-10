@@ -2,10 +2,6 @@
 import { connect } from 'cloudflare:sockets';
 import KVMap, { inCfSubNet, randFrom } from './KVMap';
 import cfhost from './cfhost.json';
-import host from './host.json';
-
-if (! Set.prototype.toJSON)
-	Set.prototype.toJSON = function() { return Set.prototype.keys.call(this).toArray() }
 
 // How to generate your own UUID:
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
@@ -24,7 +20,7 @@ let proxy6 = "2a01:4f8:c2c:123f:64:5:6810:c55a"
 let dohURL = 'https://cloudflare-dns.com/dns-query' // or https://dns.google/dns-query
 //const cfhost = ['cloudflare.com', 'ajax.cloudflare.com', 'community.cloudflare.com', 'cdnjs.cloudflare.com', 'challenges.cloudflare.com', 'time.cloudflare.com', 'performance.radar.cloudflare.com', 'www.cloudflare.com', 'cf-assets.www.cloudflare.com']
 const errorHost = ['26.26.26.2']
-const kvMap = new KVMap({ proxys, cfhost, host });
+const kvMap = new KVMap({ proxys, cfhost });
 
 if (!isValidUUID(userID)) {
 	throw new Error('uuid is invalid');
@@ -48,10 +44,9 @@ export default {
 			if (userID.includes(',')) {
 				userID_Path = userID.split(',')[0];
 			}
-			kvMap.loadHost();
-			kvMap.loadCfhost();
 			kvMap.loadProxys().then(r => proxy = kvMap.proxy);
-			console.log(`fetch() ${kvMap.proxys[443].length}(443) ${kvMap.proxys[80].length}(80), ${kvMap.cfhost.length}, ${kvMap.host.length}`)
+			kvMap.loadCfhost();
+			console.log(`fetch() ${kvMap.proxys[443].length}(443) ${kvMap.proxys[80].length}(80), ${kvMap.cfhost.size}`)
 			const upgradeHeader = request.headers.get('Upgrade');
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
 				const url = new URL(request.url);
@@ -304,13 +299,11 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 		remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log);
 	}
 	
-	if (kvMap.host.includes(addressRemote) || ! kvMap.cfhost.includes(addressRemote) && ! inCfSubNet(addressRemote)) {
+	if (! kvMap.cfhost.has(addressRemote) && ! inCfSubNet(addressRemote)) {
 		const tcpSocket = await connectAndWrite(addressRemote, portRemote);
 		// when remoteSocket is ready, pass to websocket
 		// remote--> ws
-		if (await remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log))
-			kvMap.tagHost(addressRemote);
-		else {
+		if (! await remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log)) {
 			kvMap.tagCfhost(addressRemote);
 			retry();
 		};
