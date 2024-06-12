@@ -118,15 +118,14 @@ jobs:
       - name: deploy worker, page
         run: |
           [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
-          echo "deploy worker..." >> $GITHUB_STEP_SUMMARY
-          echo "s5 deploy" >> $GITHUB_STEP_SUMMARY
+          echo "s5 deploy worker.." >> $GITHUB_STEP_SUMMARY
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
             --form 'metadata={"main_module":"'$ENTRY'"}' \
             --url $CF_SCRIPT_API/$SCRIPT/content | tail -n 4 >> $GITHUB_STEP_SUMMARY
           [ ! $deployPage ] && exit;
-          echo "deploy page..." >> $GITHUB_STEP_SUMMARY
+          echo "deploy page.." >> $GITHUB_STEP_SUMMARY
           curl -X POST -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -H 'Content-Type: multipart/form-data' \
             --form "$ENTRY=@dist/$ENTRY;type=application/javascript" \
