@@ -54,7 +54,7 @@ jobs:
         run: |
           for key in $PROXYS_BAK $PROXYS; do
             ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$key"`
-            if [[ "$ret" == *error* ]]; then
+            if echo "$ret"|grep error; then
               echo $ret
             elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
               echo "$ret" |tr -d '["]'|sed -r 's/, ?/\n/g' >> ip.txt
@@ -84,7 +84,8 @@ jobs:
               case "$r" in
                 *in-progress*)   sleep 1; continue;;
                 #*loss\":0*)      echo "$ip" >> valid_ip.txt; break;;
-                *authorized\":*) echo $ip:$port $measure_url; echo "$ip" >> ip$port.txt; break;;
+                *authorized\":true*)  echo $ip:$port $measure_url 1; echo "$ip" >> ip$port.txt; break;;
+                *authorized\":false*) echo $ip:$port $measure_url 0; echo "$ip" >> ip$port.txt; break;;
                 *cloudflare*)    echo $ip:$port $measure_url; echo "$ip" >> ip$port.txt; break;;
                 *)               break;;
               esac

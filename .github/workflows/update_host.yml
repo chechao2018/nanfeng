@@ -63,12 +63,12 @@ jobs:
         run: |
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$1"`
-            if [[ "$ret" == *error* ]]; then
+            if echo "$ret"|grep error; then
               echo $ret;
             elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
               echo $ret|tr -d '[]'|sed -r 's/, ?/\n/g' > tmp.txt
               local bak=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$2"`
-              if [[ ! "$bak" == *error* ]] && [ ! -z "$bak" ] && [ ! "$bak" = "[]" ]; then
+              if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ ! "$bak" = "[]" ]; then
                 echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
                 ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
               fi
@@ -96,7 +96,9 @@ jobs:
             echo "cfhost not update" >> $GITHUB_STEP_SUMMARY
             dif="git diff --name-only ${{ github.event.before }} ${{ github.event.after }}"
             [ $onWorkflowChange ] || dif="$dif|grep -v '\.git*'"
-            if ! `$dif` ; then
+            ret=`$dif 2>&1`
+            echo "$ret"|grep -iq 'fatal: bad object' && exit;
+            if [ -z "$dif" ]; then
               echo "code nothing update" >> $GITHUB_STEP_SUMMARY
               gh run cancel ${{ github.run_id }}
               gh run watch ${{ github.run_id }}
