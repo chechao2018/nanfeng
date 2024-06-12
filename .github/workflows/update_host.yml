@@ -19,11 +19,6 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      onWorkflowChange:
-        description: 'checking workflow file change'
-        required: false
-        default: false
-        type: boolean
       deployPage:
         description: 'deploy worker and page (default only worker)'
         required: false
@@ -94,10 +89,9 @@ jobs:
             # git push
             echo "s2 check change" >> $GITHUB_STEP_SUMMARY
             echo "cfhost not update" >> $GITHUB_STEP_SUMMARY
-            dif="git diff --name-only ${{ github.event.before }} ${{ github.event.after }}"
-            [ $onWorkflowChange ] && ret=`$dif 2>&1`|| ret=`$dif 2>&1|grep -v '\.git*'`
-            echo $ret|grep -iq 'fatal: bad object' && exit;
-            if [ -z "$ret" ]; then
+            # if trigger workflow manually then skip
+            [ ! -z ${{ github.event.before }} ] && [ ! -z ${{ github.event.after }} ] || exit 0;
+            if [ -z `git diff --name-only ${{ github.event.before }} ${{ github.event.after }} 2>&1` ]; then
               echo "code nothing update" >> $GITHUB_STEP_SUMMARY
               gh run cancel ${{ github.run_id }}
               gh run watch ${{ github.run_id }}
