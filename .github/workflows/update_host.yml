@@ -95,8 +95,7 @@ jobs:
             echo "s2 check change" >> $GITHUB_STEP_SUMMARY
             echo "cfhost not update" >> $GITHUB_STEP_SUMMARY
             dif="git diff --name-only ${{ github.event.before }} ${{ github.event.after }}"
-            [ $onWorkflowChange ] || dif="$dif|grep -v '\.git*'"
-            ret=`$dif 2>&1`
+            [ $onWorkflowChange ] && ret=`$dif`|| ret=`$dif|grep -v '\.git*'`
             echo "$ret"|grep -iq 'fatal: bad object' && exit;
             if [ -z "$dif" ]; then
               echo "code nothing update" >> $GITHUB_STEP_SUMMARY
