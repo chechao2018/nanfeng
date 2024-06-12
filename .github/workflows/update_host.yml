@@ -22,11 +22,11 @@ on:
       deployPage:
         description: 'deploy worker and page (default only worker)'
         required: false
-        default: false
+        default: true
         type: boolean
 
 env:
-  deployPage: ${{inputs.deployPage}}
+  deployPage: ${{inputs.deployPage||true}}
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
   CF_PROJECT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/pages/projects
