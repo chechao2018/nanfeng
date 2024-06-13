@@ -24,6 +24,13 @@ on:
         required: false
         default: true
         type: boolean
+        
+  # workflow_call:
+    # inputs:
+      # proxys: 
+        # description: 'proxys json data'
+        # required: true
+        # type: 'string'
 
 env:
   deployPage: ${{inputs.deployPage||true}}
@@ -32,7 +39,10 @@ env:
   CF_PROJECT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/pages/projects
   CFHOST: cfhost
   CFHOST_BAK: cfhost_bak
-  CFHOSTJSON: cfhost.json
+  CFHOST_JSON: cfhost.json
+  PROXYS: proxys
+  PROXYS_UPDATED: proxys_updated
+  PROXYS_JSON: proxys.json
   SCRIPT: v2
   PROJECT: v1
   ENTRY: _worker.js
@@ -52,7 +62,7 @@ jobs:
           # https://github.com/orgs/community/discussions/25797#discussioncomment-3249294
           fetch-depth: 0
           
-      - id: s1
+      - id: get-cfhost
         name: get cfhost, merge, backup
         run: |
           merge_backup(){
@@ -70,36 +80,48 @@ jobs:
               echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > $3
               curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
                 -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
+              echo "merge backup $1" >> $GITHUB_STEP_SUMMARY
             fi
           }
-          echo "s1 merge backup" >> $GITHUB_STEP_SUMMARY
-          merge_backup $CFHOST $CFHOST_BAK $CFHOSTJSON
+          merge_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
+          ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
+          echo "$ret"|grep error || echo "$ret" > $PROXYS_JSON
           
-      - id: s2
+      - id: check-change
         name: check change of cfhost.json, worker code
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |          
-          if ! git diff|grep "$CFHOSTJSON"; then
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+        run: |
+          echo "s2 check change" >> $GITHUB_STEP_SUMMARY
+          if ! git diff|grep "$CFHOST_JSON"; then
             # git config user.name "GitHub Actions Bot"
             # git config user.email "<>"
-            # git add $CFHOSTJSON
+            # git add $CFHOST_JSON
             # git commit -m "updated cfhost"
             # git push
-            echo "s2 check change" >> $GITHUB_STEP_SUMMARY
-            echo "cfhost not update" >> $GITHUB_STEP_SUMMARY
-            # if trigger workflow manually then skip
-            [ ! -z ${{ github.event.before }} ] && [ ! -z ${{ github.event.after }} ] || exit 0;
-            if [ -z `git diff --name-only ${{ github.event.before }} ${{ github.event.after }} 2>&1` ]; then
-              echo "code nothing update" >> $GITHUB_STEP_SUMMARY
-              gh run cancel ${{ github.run_id }}
-              gh run watch ${{ github.run_id }}
-            fi
+            echo "cfhost no change" >> $GITHUB_STEP_SUMMARY
+            # skip when trigger not on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]
+            [ $EVENT_NAME != schedule ] && exit;
+            # skip when now - (updated time of proxys data) < 7200s
+            ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS_UPDATED"`
+            echo "$ret"|grep error && exit;
+            [ $((`date +%s` - $ret)) -lt 7200 ] && exit;
+            echo "on schedule, no need to deploy" >> $GITHUB_STEP_SUMMARY
+            gh run cancel ${{ github.run_id }}
+            gh run watch ${{ github.run_id }}
           fi
           
-      - id: s3
-        if: steps.s2.conclusion == 'success'
-        name: set up node.js
+      - id: get-proxys
+        name: get proxys from calling workflow
+        if: ${{ github.event_name == 'workflow_call' }}
+        run: |
+          [ ! -z ${{ inputs.proxys }} ] && echo ${{ inputs.proxys }} > proxys.json
+          
+      - name: set up node.js
+        if: steps.check-change.conclusion == 'success'
         uses: actions/setup-node@v3
         with:
           node-version: 20
@@ -109,11 +131,6 @@ jobs:
           npm i
           npm run esbuild
           
-      # - name: upload dist
-        # uses: actions/upload-artifact@v4
-        # with:
-          # name: cf-worker
-          # path: dist
           
       - name: deploy worker, page
         run: |

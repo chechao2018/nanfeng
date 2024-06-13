@@ -31,37 +31,37 @@ export default class KVMap {
 	KEY_CFHOST = 'cfhost';
 	
 	_proxys; //entry
-	proxysCache = [[],[]]; //cache
-	proxy; // {443:'', 80:''}
-	proxysLoading;
+	proxys = [[],[]];
+	proxy = {443:'', 80:''}
+	proxysLoaded;
 
 	_cfhost = new Set(); //entry
 	cfhost = new Set(); //entry + cache
 	cfhostRaw = []; //kv source
-	cfhostLoading;
+	cfhostLoaded;
 	cfhostPutting;
-	constructor({KV, proxys = [], cfhost = [], host = []}) {
+	constructor({KV, proxys, cfhost = []}) {
 		this.KV = KV;
 		this._proxys = proxys;
+		if (proxys[0] instanceof Array)
+			this.proxys = proxys;
+		else 
+			this.proxys[0] = proxys;
 		cfhost.forEach(e => {
 			this._cfhost.add(e);
 			this.cfhost.add(e);
 		})
-		this.proxy = this.randomProxy;
+		this.randomProxy();
 	}
-	get proxys() {
-		return { 443: [...this._proxys, ...this.proxysCache[0]], 80: [...this._proxys, ...this.proxysCache[1]]}
-	}
-	get randomProxy() {
-		return { 443: randFrom(this.proxys[443]), 80: randFrom(this.proxys[80]) }
+	randomProxy() {
+		[443,80].forEach((p,i) => { if (this.proxys[i].length) this.proxy[p] = randFrom(this.proxys[i]); });
+		return this.proxy;
 	}
 	loadCfhost() {
 		return this.loadKey(this.KEY_CFHOST);
 	}
 	loadKey(key) {
-		const keyLoading = key+'Loading'
-		if (this[keyLoading]) return Promise.reject();
-		this[keyLoading] = true;
+		if (this[key+'Loaded']) return Promise.resolve();
 		return this.KVOp(key, 'get').then(r => {
 			if (r) {
 				if (r.find(e => this['_'+key].has(e))) {
@@ -74,39 +74,38 @@ export default class KVMap {
 				for (let e of r) 
 					this[key].add(e);
 			}
-			this[keyLoading] = false;
+			this[key+'Loaded'] = true;
 			console.log(`KV ${key} loaded ${this[key].size}`)
 			return this[key];
 		})
 	}
 	loadProxys() {
-		if (this.proxysLoading) return Promise.reject();
-		this.proxysLoading = true;
+		if (this.proxysLoaded) return Promise.resolve();
 		return this.KVOp(this.KEY_PROXYS, 'get').then(r => {
 			if (r) {
-				if (r[0] instanceof Array) {
-					r.forEach((a,i) => this.proxysCache[i]=a)
-				} else {
-					this.proxysCache[0] = r;
-				}
+				if (r[0] instanceof Array)
+					r.forEach((a,i)=>this.proxys[i] = a);
+				else 
+					this.proxys[0] = r;
 			}
-			this.proxy = this.randomProxy;
-			this.proxysLoading = false;
+			if (JSON.stringify(r) != JSON.stringify(this._proxys))
+				this.randomProxy();
+			this.proxysLoaded = true;
 			console.log(`KV ${this.KEY_PROXYS} loaded ${this.proxys[443].length}(443) ${this.proxys[80].length}(80)`)
 			return this.proxys;
 		})
 	}
 	async deleteProxy(host, port) {
-		if (port != 443 && port != 80) return;
-		while (this.proxysLoading) {
-			console.log(`${this.KEY_PROXYS} is loading! try wait 20ms`)
+		if (! host || port != 443 && port != 80) return;
+		while (! this.proxysLoaded) {
+			console.log(`${this.KEY_PROXYS} not loaded! try wait 20ms`)
 			await delay(20);
 		}
 		let idx = port == 443 ? 0 : 1
-		let i = this.proxysCache[idx].indexOf(host);
+		let i = this.proxys[idx].indexOf(host);
 		if (i > -1) {
-			this.proxysCache[idx].splice(i, 1);
-			this.KVOp(this.KEY_PROXYS, 'put', this.proxysCache)
+			this.proxys[idx].splice(i, 1);
+			this.KVOp(this.KEY_PROXYS, 'put', this.proxys)
 				.then(r => { console.log(`proxy ${host+':'+port} deleted from KV`); });
 		}
 		this.proxy[port] = randFrom(this.proxys[port]);
@@ -115,8 +114,8 @@ export default class KVMap {
 		return this.tag(this.KEY_CFHOST, host);
 	}
 	async tag(key, host) {
-		while (this[key+'Loading']) {
-			console.log(`${key} is loading! try wait 20ms`)
+		while (! this[key+'Loaded']) {
+			console.log(`${key} not loaded! try wait 20ms`)
 			await delay(20);
 		}
 		if (! this[key].has(host))
@@ -140,7 +139,7 @@ export default class KVMap {
 				}
 				if (ldiff.size)
 					await this.KVOp(key, 'put', difference(this[key], this['_'+key]))
-						.then(r => { console.log(`tagged ${ldiff} to KV`); })
+						.then(r => { console.log(`tagged ${ldiff.toArray()} to KV`); })
 			} else {
 				await this.KVOp(key, 'put', difference(this[key], this['_'+key]))
 					.then(r => { console.log(`tagged ${host} to KV`); })
@@ -194,11 +193,13 @@ export default class KVMap {
 		}
 		return val;
 	}
-	test() {
+	async test() {
 		this.loadKey(this.KEY_CFHOST);
 		let h = '1.1.1.1';
 		if (! this.cfhost.has(h)) {
-			this.tagCfhost('1.1.1.1').then(()=>console.log(this.cfhost))
+			this.tagCfhost('1.1.1.1').then(()=>console.log(this.cfhost.has(h)));
 		}
+		this.loadProxys();
+		this.deleteProxy(this.proxy[443], 443);
 	}
 }

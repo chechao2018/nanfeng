@@ -18,9 +18,11 @@ on:
 env:
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
   PING_API: https://api.globalping.io/v1/measurements
+  PING_LIMIT: 3
   PROXYS: proxys
   PROXYS_BAK: proxys_bak
   PROXYS_UPDATED: proxys_updated
+  PROXYS_JSON: proxys.json
   
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -63,6 +65,7 @@ jobs:
               fi
             fi
           done
+          echo `cat $PROXYS_JSON`|tr -d '["]'|sed -r 's/, ?/\n/g' >> ip.txt
           cat ip.txt | sort | uniq > tmp.txt
           mv tmp.txt ip.txt
           echo merge `wc -l ip.txt` >> $GITHUB_STEP_SUMMARY
@@ -70,27 +73,59 @@ jobs:
       - name: http test, filter
         run: |
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
-          # ip port
-          measure(){
-            local ip=$1 port=$2 protocol=http
-            [ -z "$port" ] && port=443
-            [ $port -eq 443 ] && protocol=https
-            local measure_url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"http","target":"'$ip'","locations":[{"country":"HK","limit":2}],"measurementOptions":{"port":"'$port'","protocol":"'$protocol'"}}' \
+          measure_ping(){
+            local ip=$1
+            local url=`curl -H "content-type: application/json" -A "$UA" \
+              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
               -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
             sleep 1
             while true; do
-              r=`curl -A "$UA" -s "$measure_url"`
+              local r=`curl -A "$UA" -s "$url"`
               case "$r" in
-                *in-progress*)   sleep 1; continue;;
-                #*loss\":0*)      echo "$ip" >> valid_ip.txt; break;;
-                *authorized\":true*)  echo $ip:$port $measure_url 1; echo "$ip" >> ip$port.txt; break;;
-                *authorized\":false*) echo $ip:$port $measure_url 0; echo "$ip" >> ip$port.txt; break;;
-                *cloudflare*)    echo $ip:$port $measure_url; echo "$ip" >> ip$port.txt; break;;
-                *)               break;;
+                *in-progress*)
+                  sleep 1; continue ;;
+                #*loss\":0*)
+                  local avg=`echo $r|sed -n 's/.*avg":\(\w*\).*/\1/p'`
+                  ([ "$avg" = "null" ] || [ $avg -ge 200 ]) && return 1 ;;
+                  echo $ip $url $avg; return 0 ;;
+                *)
+                  return 1 ;;
               esac
             done
           }
+          # ip port
+          measure_https(){
+            local ip=$1 port=$2 protocol=http
+            [ -z "$port" ] && port=443
+            [ $port -eq 443 ] && protocol=https
+            local url=`curl -H "content-type: application/json" -A "$UA" \
+              -d '{"type":"http","target":"'$ip'","locations":[{"country":"HK","limit":$PING_LIMIT}],"measurementOptions":{"port":"'$port'","protocol":"'$protocol'"}}' \
+              -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
+            sleep 1
+            while true; do
+              local r=`curl -A "$UA" -s "$url"` n=$PING_LIMIT avg=0
+              case "$r" in
+                *in-progress*)
+                  sleep 1; continue;;
+                *authorized\":*)  
+                  #measure_ping $ip && echo "$ip" >> ip$port.txt; 
+                  #eval `echo $r|sed -n 's/.*total":\(\w*\),.*total":\(\w*\),.*/local a=\1 b=\2/p'`;
+                  local m=`echo $r|tr -s '{,}' '\n'|grep total|grep -v null|cut -d ':' -f2`
+                  for i in $m; do 
+                    [ $i = null ] && n=$(($n-1)) || avg=$(($avg+$i)); 
+                  done
+                  avg=$(($avg/$n))
+                  echo $ip:$port $url $avg;
+                  [ $avg -gt 0 ] && [ $avg -lt 500 ] && echo "$ip" >> ip$port.txt;
+                  break;;
+                *cloudflare*)
+                  echo $ip:$port $url; echo "$ip" >> ip$port.txt; break;;
+                *)
+                  break;;
+              esac
+            done
+          }
+          
           while IFS= read -r ip; do
             measure $ip 443
           done < ip.txt
@@ -109,7 +144,7 @@ jobs:
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -d "$data" "$CF_KV_API/$PROXYS" >> $GITHUB_STEP_SUMMARY
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
-            -d "`date +%s%3N`" "$CF_KV_API/$PROXYS_UPDATED"
+            -d "`date +%s`" "$CF_KV_API/$PROXYS_UPDATED"
       
       # - name: upload ip file
         # uses: actions/upload-artifact@v4

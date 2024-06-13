@@ -1,20 +1,20 @@
 // @ts-ignore
 import { connect } from 'cloudflare:sockets';
 import KVMap, { inCfSubNet, randFrom } from './KVMap';
+import proxys from './proxys.json';
 import cfhost from './cfhost.json';
 
 // How to generate your own UUID:
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
 let userID = '90cd4a77-141a-43c9-991b-08263cfe9c11';
 
-const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn--b6gac.eu.org"]
+//const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn--b6gac.eu.org"]
 // Anycast/cloudflare.com
 const domains = ["fbi.gov","www.okcupid.com","www.gco.gov.qa","www.pcmag.com","www.visa.com.sg","www.sean-now.com","www.iplocation.net","www.wto.org","edtunnel-dgp.pages.dev","www.ipaddress.my","www.gov.ua","ip.sb","gur.gov.ua","www.visa.co.jp","www.visa.com.hk","www.zsu.gov.ua","www.digitalocean.com","japan.com","malaysia.com","russia.com","shopify.com","www.visa.com","www.visa.com.tw","iplocation.io","www.udemy.com","download.yunzhongzhuan.com","www.4chan.org","whatismyipaddress.com"]
 
 // if you want to use ipv6 or single proxy, please add comment at this line and remove comment at the next line
-let proxy = { 443: randFrom(proxys), 80: randFrom(proxys) };
 // use single proxy instead of random
-// let proxy = 'cdn.xn--b6gac.eu.org';
+let proxy = 'cdn.xn--b6gac.eu.org';
 // ipv6 proxy example remove comment to use
 let proxy6 = "2a01:4f8:c2c:123f:64:5:6810:c55a"
 let dohURL = 'https://cloudflare-dns.com/dns-query' // or https://dns.google/dns-query
@@ -36,7 +36,6 @@ export default {
 	async fetch(request, env, ctx) {
 		// uuid_validator(request);
 		try {
-			kvMap.KV = env.KV;
 			userID = env.UUID || userID;
 			proxy = env.PROXY || proxy;
 			dohURL = env.DOH_URL || dohURL;
@@ -44,9 +43,13 @@ export default {
 			if (userID.includes(',')) {
 				userID_Path = userID.split(',')[0];
 			}
-			kvMap.loadProxys().then(r => proxy = kvMap.proxy);
-			kvMap.loadCfhost();
-			console.log(`fetch() ${kvMap.proxys[443].length}(443) ${kvMap.proxys[80].length}(80), ${kvMap.cfhost.size}`)
+			if (! kvMap.KV) {
+				kvMap.KV = env.KV;
+				kvMap.loadCfhost();
+				kvMap.loadProxys();
+			}
+			console.log(`fetch() ${kvMap.proxys[0].length}(443) ${kvMap.proxys[1].length}(80), ${kvMap.cfhost.size}`)
+			kvMap.test();
 			const upgradeHeader = request.headers.get('Upgrade');
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
 				const url = new URL(request.url);
@@ -286,12 +289,12 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 	 * @returns {Promise<void>} A Promise that resolves when the retry is complete.
 	 */
 	async function retry() {
-		const tcpSocket = await connectAndWrite(proxy[portRemote] || addressRemote, portRemote)
+		let proxy = kvMap.proxy[portRemote];
+		const tcpSocket = await connectAndWrite(proxy || addressRemote, portRemote)
 		tcpSocket.closed.catch(error => {
 			console.log('retry tcpSocket closed error', error);
-			if (/HTTP|fetch/i.test(error) && proxy[portRemote]) {
-				kvMap.deleteProxy(proxy[portRemote], portRemote)
-				proxy = kvMap.proxy;
+			if (/HTTP|fetch/i.test(error) && proxy) {
+				kvMap.deleteProxy(proxy, portRemote);
 			}
 		}).finally(() => {
 			safeCloseWebSocket(webSocket);
