@@ -71,30 +71,28 @@ jobs:
             if echo "$ret"|grep error; then
               echo $ret;
             elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
+              echo "get-data $1" >> $GITHUB_STEP_SUMMARY
+              curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
+                -d "" "$CF_KV_API/$1" >> $GITHUB_STEP_SUMMARY
+              
               echo $ret|tr -d '[]'|sed -r 's/, ?/\n/g' > tmp.txt
               local bak=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$2"`
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ ! "$bak" = "[]" ]; then
                 echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
                 ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
               fi
+              
               echo `cat $3`|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
               echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > $3
+              
               curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
                 -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
-              echo "merge backup $1" >> $GITHUB_STEP_SUMMARY
             fi
           }
           merge_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
-          if [ $EVENT_NAME = workflow_call ] && [ ! -z ${{ inputs.proxys }} ]; then
-             echo $EVENT_NAME >> $GITHUB_STEP_SUMMARY
-             echo ${{ inputs.proxys }} > $PROXYS_JSON
-          else
-            ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
-            echo "$ret"|grep error || echo "$ret" > $PROXYS_JSON
-          fi
           
       - id: check-change
-        name: check change of cfhost.json, worker code
+        name: check change of cfhost.json, proxys update time
         env:
           GH_TOKEN: ${{ github.token }}
           BEFORE: ${{ github.event.before }}
@@ -107,26 +105,32 @@ jobs:
             # git add $CFHOST_JSON
             # git commit -m "updated cfhost"
             # git push
+            
             echo "cfhost no change" >> $GITHUB_STEP_SUMMARY
-            # skip when trigger not on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]
-            [ $EVENT_NAME != schedule ] && exit;
-            # skip when now - (updated time of proxys data) < 7200s
+            # cancel when trigger on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]
+            # and when now - (updated time of proxys data) >= 7200s
             ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS_UPDATED"`
-            echo "$ret"|grep error && exit;
-            [ $((`date +%s` - $ret)) -lt 7200 ] && exit;
-            echo "on schedule, no change no need to deploy" >> $GITHUB_STEP_SUMMARY
-            gh run cancel ${{ github.run_id }}
-            gh run watch ${{ github.run_id }}
+            if [ $EVENT_NAME = schedule ] && [ ! echo "$ret"|grep error ] && [ $((`date +%s` - $ret)) -ge 7200 ]; then
+              echo "on schedule, no change no need to deploy" >> $GITHUB_STEP_SUMMARY
+              gh run cancel ${{ github.run_id }}
+              gh run watch ${{ github.run_id }}
+            fi
           fi
           
-      # - id: get-proxys
-        # name: get proxys from calling workflow
+      - id: get-proxys
+        name: get proxys data
         # if: ${{ github.event_name == 'workflow_call' }}
-        # run: |
-          # [ ! -z ${{ inputs.proxys }} ] && echo ${{ inputs.proxys }} > proxys.json
+        run: |
+          if [ $EVENT_NAME = workflow_call ] && [ ! -z ${{ inputs.proxys }} ]; then
+             echo $EVENT_NAME >> $GITHUB_STEP_SUMMARY
+             echo ${{ inputs.proxys }} > $PROXYS_JSON
+          else
+            ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
+            echo "$ret"|grep error && exit 443 || echo "$ret" > $PROXYS_JSON
+          fi
           
       - name: set up node.js
-        if: steps.check-change.conclusion == 'success'
+        if: steps.get-proxys.conclusion == 'success'
         uses: actions/setup-node@v3
         with:
           node-version: 20
