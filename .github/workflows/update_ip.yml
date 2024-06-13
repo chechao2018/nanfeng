@@ -28,7 +28,7 @@ env:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  build:
+  update-ip:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
@@ -145,7 +145,8 @@ jobs:
             -d "$data" "$CF_KV_API/$PROXYS" >> $GITHUB_STEP_SUMMARY
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -d "`date +%s`" "$CF_KV_API/$PROXYS_UPDATED"
-      
+          echo "data=$data" >> $GITHUB_OUTPUT
+          
       # - name: upload ip file
         # uses: actions/upload-artifact@v4
         # with:
@@ -153,3 +154,9 @@ jobs:
           # path: |
             # ip443.txt
             # ip80.txt
+            
+  deploy:
+    needs: update-ip
+    uses: ./.github/workflows/update_host.yml
+    with:
+      proxys: ${{ needs.update-ip.outputs.data }}

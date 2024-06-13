@@ -25,15 +25,16 @@ on:
         default: true
         type: boolean
         
-  # workflow_call:
-    # inputs:
-      # proxys: 
-        # description: 'proxys json data'
-        # required: true
-        # type: 'string'
+  workflow_call:
+    inputs:
+      proxys: 
+        description: 'proxys json data'
+        required: true
+        type: 'string'
 
 env:
   deployPage: ${{inputs.deployPage||true}}
+  EVENT_NAME: ${{github.event_name}}
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
   CF_PROJECT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/pages/projects
@@ -62,8 +63,9 @@ jobs:
           # https://github.com/orgs/community/discussions/25797#discussioncomment-3249294
           fetch-depth: 0
           
-      - id: get-cfhost
-        name: get cfhost, merge, backup
+      - id: get-data
+        name: get cfhost, merge, backup, get proxys
+        env:
         run: |
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$1"`
@@ -84,14 +86,18 @@ jobs:
             fi
           }
           merge_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
-          ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
-          echo "$ret"|grep error || echo "$ret" > $PROXYS_JSON
+          if [ $EVENT_NAME = workflow_call ] && [ ! -z ${{ inputs.proxys }} ]; then
+             echo $EVENT_NAME >> $GITHUB_STEP_SUMMARY
+             echo ${{ inputs.proxys }} > $PROXYS_JSON
+          else
+            ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`
+            echo "$ret"|grep error || echo "$ret" > $PROXYS_JSON
+          fi
           
       - id: check-change
         name: check change of cfhost.json, worker code
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
         run: |
@@ -109,16 +115,16 @@ jobs:
             ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS_UPDATED"`
             echo "$ret"|grep error && exit;
             [ $((`date +%s` - $ret)) -lt 7200 ] && exit;
-            echo "on schedule, no need to deploy" >> $GITHUB_STEP_SUMMARY
+            echo "on schedule, no change no need to deploy" >> $GITHUB_STEP_SUMMARY
             gh run cancel ${{ github.run_id }}
             gh run watch ${{ github.run_id }}
           fi
           
-      - id: get-proxys
-        name: get proxys from calling workflow
-        if: ${{ github.event_name == 'workflow_call' }}
-        run: |
-          [ ! -z ${{ inputs.proxys }} ] && echo ${{ inputs.proxys }} > proxys.json
+      # - id: get-proxys
+        # name: get proxys from calling workflow
+        # if: ${{ github.event_name == 'workflow_call' }}
+        # run: |
+          # [ ! -z ${{ inputs.proxys }} ] && echo ${{ inputs.proxys }} > proxys.json
           
       - name: set up node.js
         if: steps.check-change.conclusion == 'success'
