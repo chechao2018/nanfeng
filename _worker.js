@@ -49,7 +49,6 @@ export default {
 				kvMap.loadProxys();
 			}
 			console.log(`fetch() ${kvMap.proxys[0].length}(443) ${kvMap.proxys[1].length}(80), ${kvMap.cfhost.size}`)
-			kvMap.test();
 			const upgradeHeader = request.headers.get('Upgrade');
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
 				const url = new URL(request.url);

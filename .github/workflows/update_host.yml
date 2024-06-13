@@ -64,7 +64,7 @@ jobs:
           fetch-depth: 0
           
       - id: get-data
-        name: get cfhost, merge, backup, get proxys
+        name: get cfhost, merge, backup
         run: |
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$1"`
