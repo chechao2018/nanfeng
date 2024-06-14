@@ -91,7 +91,7 @@ export default class KVMap {
 					this.randomProxy();
 			}
 			this.proxysLoaded = true;
-			console.log(`KV ${this.KEY_PROXYS} loaded ${this.proxys[443].length}(443) ${this.proxys[80].length}(80)`)
+			console.log(`KV ${this.KEY_PROXYS} loaded ${this.proxys[0].length}(443) ${this.proxys[1].length}(80)`)
 			return this.proxys;
 		})
 	}
