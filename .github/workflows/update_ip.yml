@@ -84,7 +84,7 @@ jobs:
               case "$r" in
                 *in-progress*)
                   sleep 1; continue ;;
-                #*loss\":0*)
+                *loss\":0*)
                   local avg=`echo $r|sed -n 's/.*avg":\(\w*\).*/\1/p'`
                   ([ "$avg" = "null" ] || [ $avg -ge 200 ]) && return 1
                   echo $ip $url $avg; return 0 ;;
