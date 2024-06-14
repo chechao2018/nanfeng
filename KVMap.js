@@ -87,7 +87,7 @@ export default class KVMap {
 					r.forEach((a,i)=>this.proxys[i] = a);
 				else 
 					this.proxys[0] = r;
-				if (r.toString() != this._proxys.toString()))
+				if (r.toString() != this._proxys.toString())
 					this.randomProxy();
 			}
 			this.proxysLoaded = true;
