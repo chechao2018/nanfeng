@@ -94,7 +94,7 @@ jobs:
             done
           }
           # ip port
-          measure_https(){
+          measure_http(){
             local ip=$1 port=$2 protocol=http
             [ -z "$port" ] && port=443
             [ $port -eq 443 ] && protocol=https
@@ -127,10 +127,10 @@ jobs:
           }
           
           while IFS= read -r ip; do
-            measure $ip 443
+            measure_http $ip 443
           done < ip.txt
           while IFS= read -r ip; do
-            measure $ip 80
+            measure_http $ip 80
           done < ip443.txt
           echo `wc -l ip80.txt` >> $GITHUB_STEP_SUMMARY
           echo `wc -l ip443.txt` >> $GITHUB_STEP_SUMMARY
