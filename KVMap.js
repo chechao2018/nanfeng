@@ -87,9 +87,9 @@ export default class KVMap {
 					r.forEach((a,i)=>this.proxys[i] = a);
 				else 
 					this.proxys[0] = r;
+				if (r.toString() != this._proxys.toString()))
+					this.randomProxy();
 			}
-			if (JSON.stringify(r) != JSON.stringify(this._proxys))
-				this.randomProxy();
 			this.proxysLoaded = true;
 			console.log(`KV ${this.KEY_PROXYS} loaded ${this.proxys[443].length}(443) ${this.proxys[80].length}(80)`)
 			return this.proxys;

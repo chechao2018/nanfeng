@@ -86,7 +86,7 @@ jobs:
                   sleep 1; continue ;;
                 #*loss\":0*)
                   local avg=`echo $r|sed -n 's/.*avg":\(\w*\).*/\1/p'`
-                  ([ "$avg" = "null" ] || [ $avg -ge 200 ]) && return 1 ;;
+                  ([ "$avg" = "null" ] || [ $avg -ge 200 ]) && return 1
                   echo $ip $url $avg; return 0 ;;
                 *)
                   return 1 ;;
@@ -106,7 +106,7 @@ jobs:
               local r=`curl -A "$UA" -s "$url"` n=$PING_LIMIT avg=0
               case "$r" in
                 *in-progress*)
-                  sleep 1; continue;;
+                  sleep 1; continue ;;
                 *authorized\":*)  
                   #measure_ping $ip && echo "$ip" >> ip$port.txt; 
                   #eval `echo $r|sed -n 's/.*total":\(\w*\),.*total":\(\w*\),.*/local a=\1 b=\2/p'`;
@@ -117,11 +117,11 @@ jobs:
                   avg=$(($avg/$n))
                   echo $ip:$port $url $avg;
                   [ $avg -gt 0 ] && [ $avg -lt 500 ] && echo "$ip" >> ip$port.txt;
-                  break;;
+                  break ;;
                 *cloudflare*)
-                  echo $ip:$port $url; echo "$ip" >> ip$port.txt; break;;
+                  echo $ip:$port $url; echo "$ip" >> ip$port.txt; break ;;
                 *)
-                  break;;
+                  break ;;
               esac
             done
           }
