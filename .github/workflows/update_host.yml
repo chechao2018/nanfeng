@@ -121,8 +121,7 @@ jobs:
         name: get proxys data
         # if: ${{ github.event_name == 'workflow_call' }}
         run: |
-          if [ $EVENT_NAME = workflow_call ] && [ ! -z ${{ inputs.proxys }} ]; then
-             echo $EVENT_NAME >> $GITHUB_STEP_SUMMARY
+          if [ ! -z ${{ inputs.proxys }} ]; then
              echo ${{ inputs.proxys }} > $PROXYS_JSON
           else
             ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$PROXYS"`

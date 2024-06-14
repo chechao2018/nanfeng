@@ -132,7 +132,7 @@ export default class KVMap {
 			this[keyPutting] = true;
 			if (this[key+'Raw'].length) {
 				let r = await this.KVOp(key, 'get');
-				let ldiff = new Set(this[key]);
+				let ldiff = this[key].difference(this['_'+key]);
 				for (const e of r) {
 					if (this[key].has(e)) ldiff.delete(e);
 					else this[key].add(e);
