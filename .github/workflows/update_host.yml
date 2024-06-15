@@ -53,6 +53,8 @@ on:
         required: true
       CF_NAMESPACE_ID:
         required: true
+      CF_UUID:
+        required: false
 
 env:
   workerName: ${{inputs.workerName || 'v2'}}
@@ -71,6 +73,7 @@ env:
   PROXYS_UPDATED: proxys_updated
   PROXYS_JSON: proxys.json
   ENTRY: _worker.js
+  KV: KV
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -123,7 +126,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
         run: |
-          echo "s2 check change" >> $GITHUB_STEP_SUMMARY
+          echo "check change.." >> $GITHUB_STEP_SUMMARY
           if ! git diff|grep "$CFHOST_JSON"; then
             # git config user.name "GitHub Actions Bot"
             # git config user.email "<>"
@@ -169,23 +172,44 @@ jobs:
           npm run esbuild
           
       - name: deploy worker, page
+        env:
+          CFENV: ${{pageBranch && 'preview' || 'production'}}
         run: |
           [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
-          echo "s5 deploy worker.." >> $GITHUB_STEP_SUMMARY
+          echo "deploy worker.." >> $GITHUB_STEP_SUMMARY
           ret=`curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
             --form 'metadata={"main_module":"'$ENTRY'"}' \
             --url $CF_SCRIPT_API/$workerName/content`
-          echo $ret >> $GITHUB_STEP_SUMMARY
-          echo $ret|grep 'success": false' && exit 9
+          echo $ret|grep 'success": false' && echo $ret && exit 9 || echo 'success' >> $GITHUB_STEP_SUMMARY
+          
           [ ! $deployPage ] && exit;
           echo "deploy page.." >> $GITHUB_STEP_SUMMARY
-          metadata='metadata={"main_module":"'$ENTRY'","bindings":[{"type": "kv_namespace","name":"KV","namespace_id":"'$CF_NAMESPACE_ID'"}]}'
-          curl -X POST -H "Authorization:Bearer $CF_API_TOKEN" \
+          #metadata='metadata={"main_module":"'$ENTRY'","bindings":[{"type": "kv_namespace","name":"KV","namespace_id":"'$CF_NAMESPACE_ID'"}]}'
+          ret=`curl -X POST -H "Authorization:Bearer $CF_API_TOKEN" \
             -H 'Content-Type: multipart/form-data' \
             --form "$ENTRY=@dist/$ENTRY;type=application/javascript" \
             --form 'manifest={}' \
-            --form "$metadata" \
             --form "branch=$pageBranch" \
-            --url $CF_PROJECT_API/$pageName/deployments | tail -n 4 >> $GITHUB_STEP_SUMMARY
+            --url $CF_PROJECT_API/$pageName/deployments`
+          echo $ret|grep 'success": false' && echo $ret && exit 9 || echo 'success' >> $GITHUB_STEP_SUMMARY
+            
+          nsId=`echo $ret | tr -s '}' '\n'|grep $KV|cut -d '"' -f8`
+          uuid=`echo $ret | tr -s '}' '\n'|grep UUID|cut -d '"' -f12`
+          conf=
+          if [ ! -z $CF_UUID ]; then
+            [ "$uuid" != "$CF_UUID" ] && conf='"env_vars":{"UUID":{"type":"plain_text","value":"'$CF_UUID'"}}'
+          elif [ -z $uuid ]; then
+            echo "Warning: UUID is empty! you can fill in github action secrets then try again, or fill in cloudflare dashboard settings then it works" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -z $naId ] || [ $nsId != $CF_NAMESPACE_ID ]; then
+            [ ! -z $conf ] && conf=",$conf"
+            conf=$conf'"kv_namespaces":{"KV":{"namespace_id":"'$CF_NAMESPACE_ID'"}}'
+          fi
+          [ -z $conf ] && exit;
+          ret=`curl -X PATCH -H "Authorization:Bearer $CF_API_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"deployment_configs":{"'$CFENV'":{'$conf'}}}' \
+            $CF_PROJECT_API/$pageName`
+          echo $ret|grep 'success": false' && echo $ret && exit 9 || echo 'patch success' >> $GITHUB_STEP_SUMMARY
