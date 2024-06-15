@@ -31,7 +31,8 @@ jobs:
   update-ip:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    outputs:
+      data: ${{ steps.put-data.outputs.data }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -135,7 +136,8 @@ jobs:
           echo `wc -l ip443.txt` >> $GITHUB_STEP_SUMMARY
           echo `wc -l ip80.txt` >> $GITHUB_STEP_SUMMARY
           
-      - name: update valid ip to server
+      - id: put-data
+        name: update valid ip to server
         run: |
           [ ! -s ip443.txt ] && echo 'no valid ip with port 443' && exit 443;
           data=[[$(echo `sed -r 's/^(.*)$/"\1"/' ip443.txt`|tr -s ' ' ',')]
