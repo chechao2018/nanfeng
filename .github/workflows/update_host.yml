@@ -173,7 +173,7 @@ jobs:
           
       - name: deploy worker, page
         env:
-          CFENV: ${{pageBranch && 'preview' || 'production'}}
+          CFENV: ${{env.pageBranch && 'preview' || 'production'}}
         run: |
           [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
           echo "deploy worker.." >> $GITHUB_STEP_SUMMARY
