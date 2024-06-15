@@ -205,7 +205,7 @@ jobs:
           elif [ -z $uuid ]; then
             echo "Warning: UUID is empty! you can fill in github action secrets then try again, or fill in cloudflare dashboard settings then it works" >> $GITHUB_STEP_SUMMARY
           fi
-          if [ -z $naId ] || [ $nsId != $CF_NAMESPACE_ID ]; then
+          if [ -z $nsId ] || [ $nsId != $CF_NAMESPACE_ID ]; then
             [ ! -z $conf ] && conf=",$conf"
             conf=$conf'"kv_namespaces":{"KV":{"namespace_id":"'$CF_NAMESPACE_ID'"}}'
           fi
