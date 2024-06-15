@@ -57,7 +57,7 @@ on:
 env:
   workerName: ${{inputs.workerName || 'v2'}}
   pageName:   ${{inputs.pageName || 'v1'}}
-  pageBranch: ${{github.event_name == 'workflow_dispatch' ? inputs.pageBranch : 'test'}}
+  pageBranch: ${{github.event_name == 'workflow_dispatch' && inputs.pageBranch || 'test'}}
   deployPage: ${{inputs.deployPage || true }}
   EVENT_NAME: ${{github.event_name}}
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
