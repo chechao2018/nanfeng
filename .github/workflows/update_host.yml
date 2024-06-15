@@ -89,8 +89,8 @@ jobs:
           
       - id: get-data
         name: get cfhost, merge, backup
-        if: ${{ secrets.CF_ACCOUNT_ID != '' && secrets.CF_API_TOKEN != '' && secrets.CF_NAMESPACE_ID != '' }}
         run: |
+          [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z ${{secrets.CF_API_TOKEN}} ] || [ -z ${{secrets.CF_NAMESPACE_ID}} ] && echo "secrets required!" && exit 111;
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
             if echo "$ret"|grep error; then
