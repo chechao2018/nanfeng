@@ -162,3 +162,4 @@ jobs:
     uses: ./.github/workflows/update_host.yml
     with:
       proxys: ${{ needs.update-ip.outputs.data }}
+    secrets: inherit

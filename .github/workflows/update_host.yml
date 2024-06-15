@@ -24,6 +24,21 @@ on:
         required: false
         default: true
         type: boolean
+      workerName:
+        description: 'worker script name for deployment (default v2)'
+        required: false
+        default: 'v2'
+        type: 'string'
+      pageName:
+        description: 'page project name for deployment (default v1)'
+        required: false
+        default: 'v1'
+        type: 'string'
+      pageBranch:
+        description: 'page branch for deployment (default test)'
+        required: false
+        default: 'test'
+        type: 'string'
         
   workflow_call:
     inputs:
@@ -31,8 +46,18 @@ on:
         description: 'proxys json data'
         required: true
         type: 'string'
+    secrets:
+      CF_ACCOUNT_ID:
+        required: true
+      CF_API_TOKEN:
+        required: true
+      CF_NAMESPACE_ID:
+        required: true
 
 env:
+  workerName: ${{inputs.workerName||'v2'}
+  pageName: ${{inputs.pageName||'v1'}
+  pageBranch: ${{inputs.pageBranch||'test'}
   deployPage: ${{inputs.deployPage||true}}
   EVENT_NAME: ${{github.event_name}}
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
@@ -45,8 +70,6 @@ env:
   PROXYS: proxys
   PROXYS_UPDATED: proxys_updated
   PROXYS_JSON: proxys.json
-  SCRIPT: v2
-  PROJECT: v1
   ENTRY: _worker.js
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -66,6 +89,7 @@ jobs:
           
       - id: get-data
         name: get cfhost, merge, backup
+        if: ${{ secrets.CF_ACCOUNT_ID != '' && secrets.CF_API_TOKEN != '' && secrets.CF_NAMESPACE_ID != '' }}
         run: |
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
@@ -114,7 +138,7 @@ jobs:
             # and when now - (updated time of proxys data) >= 7200s
             df='+%Y-%m-%d %H:%M:%S %z'
             s=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$PROXYS_UPDATED"`
-            echo "$ret"|grep error && s=0 || echo "$PROXYS_UPDATED:`date "$df" -d @$s`, now:`date "$df"`" >> $GITHUB_STEP_SUMMARY
+            echo "$ret"|grep error && s=0 || echo "$PROXYS_UPDATED: `date "$df" -d @$s`, now: `date "$df"`" >> $GITHUB_STEP_SUMMARY
             if [ $EVENT_NAME = schedule ] && [ $((`date +%s` - $s)) -ge 7000 ]; then
               echo "on schedule, no change no need to deploy" >> $GITHUB_STEP_SUMMARY
               gh run cancel ${{ github.run_id }}
@@ -148,16 +172,18 @@ jobs:
         run: |
           [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
           echo "s5 deploy worker.." >> $GITHUB_STEP_SUMMARY
+          metadata='metadata={"main_module":"'$ENTRY'","bindings":[{"type": "kv_namespace","name":"KV","namespace_id":"'$CF_NAMESPACE_ID'"}]}'
           curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
-            --form 'metadata={"main_module":"'$ENTRY'"}' \
-            --url $CF_SCRIPT_API/$SCRIPT/content | tail -n 4 >> $GITHUB_STEP_SUMMARY
+            --form $metadata \
+            --url $CF_SCRIPT_API/$workerName/content | tail -n 4 >> $GITHUB_STEP_SUMMARY
           [ ! $deployPage ] && exit;
           echo "deploy page.." >> $GITHUB_STEP_SUMMARY
           curl -X POST -H "Authorization:Bearer $CF_API_TOKEN" \
             -H 'Content-Type: multipart/form-data' \
             --form "$ENTRY=@dist/$ENTRY;type=application/javascript" \
             --form 'manifest={}' \
-            --form 'branch=test' \
-            --url $CF_PROJECT_API/$PROJECT/deployments | tail -n 4 >> $GITHUB_STEP_SUMMARY
+            --form $metadata \
+            --form "branch=$pageBranch" \
+            --url $CF_PROJECT_API/$pageName/deployments | tail -n 4 >> $GITHUB_STEP_SUMMARY
