@@ -132,14 +132,14 @@ jobs:
             # git push
             echo "cfhost no change" >> $GITHUB_STEP_SUMMARY
             
-            [ ! -z ${{ inputs.proxys }} ] && exit;
+            [ ! -z ${{ inputs.proxys }} ] || [ $EVENT_NAME != schedule ] && exit;
             
             # cancel when trigger on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]
             # and when now - (updated time of proxys data) >= 7200s
             df='+%Y-%m-%d %H:%M:%S %z'
             s=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$PROXYS_UPDATED"`
             echo "$ret"|grep error && s=0 || echo "$PROXYS_UPDATED: `date "$df" -d @$s`, now: `date "$df"`" >> $GITHUB_STEP_SUMMARY
-            if [ $EVENT_NAME = schedule ] && [ $((`date +%s` - $s)) -ge 7000 ]; then
+            if [ $((`date +%s` - $s)) -ge 7000 ]; then
               echo "on schedule, no change no need to deploy" >> $GITHUB_STEP_SUMMARY
               gh run cancel ${{ github.run_id }}
               gh run watch ${{ github.run_id }}
