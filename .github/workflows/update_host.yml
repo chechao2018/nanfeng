@@ -177,7 +177,7 @@ jobs:
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
             --form "$metadata" \
-            --url $CF_SCRIPT_API/$workerName/content | tail -n 4 >> $GITHUB_STEP_SUMMARY
+            --url $CF_SCRIPT_API/$workerName/content >> $GITHUB_STEP_SUMMARY
           [ ! $deployPage ] && exit;
           echo "deploy page.." >> $GITHUB_STEP_SUMMARY
           curl -X POST -H "Authorization:Bearer $CF_API_TOKEN" \
