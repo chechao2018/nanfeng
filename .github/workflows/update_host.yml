@@ -66,6 +66,8 @@ env:
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
   CF_PROJECT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/pages/projects
   CF_API_TOKEN: ${{secrets.CF_API_TOKEN}}
+  CF_NAMESPACE_ID: ${{secrets.CF_NAMESPACE_ID}}
+  CF_UUID: ${{secrets.CF_UUID}}
   CFHOST: cfhost
   CFHOST_BAK: cfhost_bak
   CFHOST_JSON: cfhost.json
