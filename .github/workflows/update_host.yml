@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       deployPage:
-        description: 'deploy worker and page (default only worker)'
+        description: 'deploy worker and page (default worker and page)'
         required: false
         default: true
         type: boolean
@@ -35,7 +35,7 @@ on:
         default: 'v1'
         type: 'string'
       pageBranch:
-        description: 'page branch for deployment (default test)'
+        description: 'page branch for deployment environment, empty for production, non-empty for preview (default test)'
         required: false
         default: 'test'
         type: 'string'
@@ -56,8 +56,8 @@ on:
 
 env:
   workerName: ${{inputs.workerName || 'v2'}}
-  pageName: ${{inputs.pageName || 'v1'}}
-  pageBranch: ${{inputs.pageBranch || 'test'}}
+  pageName:   ${{inputs.pageName || 'v1'}}
+  pageBranch: ${{github.event_name == 'workflow_dispatch' ? inputs.pageBranch : 'test'}}
   deployPage: ${{inputs.deployPage || true }}
   EVENT_NAME: ${{github.event_name}}
   CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
@@ -172,14 +172,16 @@ jobs:
         run: |
           [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
           echo "s5 deploy worker.." >> $GITHUB_STEP_SUMMARY
-          metadata='metadata={"main_module":"'$ENTRY'","bindings":[{"type": "kv_namespace","name":"KV","namespace_id":"'$CF_NAMESPACE_ID'"}]}'
-          curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
+          ret=`curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
             -H 'Content-Type: multipart/form-data' \
             --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
-            --form "$metadata" \
-            --url $CF_SCRIPT_API/$workerName/content >> $GITHUB_STEP_SUMMARY
+            --form 'metadata={"main_module":"'$ENTRY'"}' \
+            --url $CF_SCRIPT_API/$workerName/content`
+          echo $ret >> $GITHUB_STEP_SUMMARY
+          echo $ret|grep 'success": false' && exit 9
           [ ! $deployPage ] && exit;
           echo "deploy page.." >> $GITHUB_STEP_SUMMARY
+          metadata='metadata={"main_module":"'$ENTRY'","bindings":[{"type": "kv_namespace","name":"KV","namespace_id":"'$CF_NAMESPACE_ID'"}]}'
           curl -X POST -H "Authorization:Bearer $CF_API_TOKEN" \
             -H 'Content-Type: multipart/form-data' \
             --form "$ENTRY=@dist/$ENTRY;type=application/javascript" \
