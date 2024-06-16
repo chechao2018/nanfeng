@@ -156,7 +156,7 @@ jobs:
         # if: ${{ github.event_name == 'workflow_call' }}
         run: |
           if [ ! -z ${{ inputs.proxys }} ]; then
-            echo ${{ inputs.proxys }} > $PROXYS_JSON
+            echo "${{ inputs.proxys }}" > $PROXYS_JSON
           else
             ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$PROXYS"`
             echo "$ret"|grep error && exit 443 || echo "$ret" > $PROXYS_JSON

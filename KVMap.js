@@ -37,7 +37,7 @@ export default class KVMap {
 
 	_cfhost = new Set(); //entry
 	cfhost = new Set(); //entry + cache
-	cfhostRaw = []; //kv source
+	cfhostRaw = false; //kv source
 	cfhostLoaded;
 	cfhostPutting;
 	constructor({KV, proxys, cfhost = []}) {
@@ -64,13 +64,13 @@ export default class KVMap {
 		if (this[key+'Loaded']) return Promise.resolve();
 		return this.KVOp(key, 'get').then(r => {
 			if (r) {
-				if (r.find(e => this['_'+key].has(e))) {
+				/* if (r.find(e => this['_'+key].has(e))) {
 					r = difference(r, this['_'+key]);
 					//update to KV
 					this[key+'Putting'] = true;
 					this.KVOp(key, 'put', r.length?r:'').then(()=>{ this[key+'Putting'] = false; })
-				}
-				this[key+'Raw'] = r;
+				} */
+				this[key+'Raw'] = true;
 				for (let e of r) 
 					this[key].add(e);
 			}
@@ -130,19 +130,25 @@ export default class KVMap {
 		}
 		if (! this[keyPutting]) {
 			this[keyPutting] = true;
-			if (this[key+'Raw'].length) {
+			if (this[key+'Raw']) {
 				let r = await this.KVOp(key, 'get');
-				let ldiff = this[key].difference(this['_'+key]);
-				for (const e of r) {
-					if (this[key].has(e)) ldiff.delete(e);
-					else this[key].add(e);
-				}
-				if (ldiff.size)
-					await this.KVOp(key, 'put', difference(this[key], this['_'+key]))
-						.then(r => { console.log(`tagged ${ldiff.toArray()} to KV`); })
+				if (r) {
+					let ldiff = this[key].difference(this['_'+key]);
+					for (const e of r) {
+						if (this[key].has(e)) ldiff.delete(e);
+						else this[key].add(e);
+					}
+					if (ldiff.size)
+						await this.KVOp(key, 'put', difference(this[key], this['_'+key]))
+							.then(r => { console.log(`tagged ${ldiff.toArray()} to KV`); })
+				} else 
+					this[key+'Raw'] = false;
 			} else {
 				await this.KVOp(key, 'put', difference(this[key], this['_'+key]))
-					.then(r => { console.log(`tagged ${host} to KV`); })
+					.then(r => { 
+						this[key+'Raw'] = true; 
+						console.log(`tagged ${host} to KV`); 
+					})
 			}
 			this[keyPutting] = false;
 		}

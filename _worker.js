@@ -306,12 +306,12 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 		// when remoteSocket is ready, pass to websocket
 		// remote--> ws
 		if (! await remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log)) {
-			kvMap.tagCfhost(addressRemote);
 			retry();
+			kvMap.tagCfhost(addressRemote);
 		};
 	} else  {
-		log(`Hit proxy for ${addressRemote}`)
 		retry();
+		log(`Hit proxy for ${addressRemote}`)
 	}
 }
 
