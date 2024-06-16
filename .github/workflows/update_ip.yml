@@ -110,6 +110,9 @@ jobs:
                   sleep 1; continue ;;
                 *authorized\":*)  
                   #measure_ping $ip && echo "$ip" >> ip$port.txt; 
+                  local d=`echo $r|tr -s '{,.}' '\n'|grep expiresAt|grep -v null|tr -s '"T' ' '|awk '{printf "%s %s\n",$3,$4}'|head -n 1`
+                  [ -z $d ] || [ $((`date -d "$d" +%s`-`date +%s`)) -lt 86400 ] && break
+                  
                   #eval `echo $r|sed -n 's/.*total":\(\w*\),.*total":\(\w*\),.*/local a=\1 b=\2/p'`;
                   local m=`echo $r|tr -s '{,}' '\n'|grep total|grep -v null|cut -d ':' -f2`
                   for i in $m; do 
@@ -120,7 +123,8 @@ jobs:
                   [ $avg -gt 0 ] && [ $avg -lt 500 ] && echo "$ip" >> ip$port.txt;
                   break ;;
                 *cloudflare*)
-                  echo $ip:$port $url; echo "$ip" >> ip$port.txt; break ;;
+                  [ $port -eq 80 ] && echo $ip:$port $url; echo "$ip" >> ip$port.txt; 
+                  break ;;
                 *)
                   break ;;
               esac

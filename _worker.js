@@ -310,8 +310,8 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 			kvMap.tagCfhost(addressRemote);
 		};
 	} else  {
+		log(`Hit proxy for ${addressRemote}`);
 		retry();
-		log(`Hit proxy for ${addressRemote}`)
 	}
 }
 
