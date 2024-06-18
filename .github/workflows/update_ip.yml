@@ -51,7 +51,7 @@ jobs:
           curl -o ip.zip https://zip.baipiao.eu.org
           unzip ip.zip -d ip
           cat ip/*.txt | sort | uniq > ip.txt
-          echo zip `wc -l ip.txt` >> $GITHUB_STEP_SUMMARY
+          echo zip `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
           
       - name: backup original data, merge
         run: |
@@ -59,8 +59,8 @@ jobs:
             ret=`curl -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" "$CF_KV_API/$key"`
             if echo "$ret"|grep error; then
               echo $ret
-            elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
-              echo "$ret" |tr -d '{"[]}'|sed -r 's/\w+://g'|sed -r 's/, ?/\n/g' >> ip.txt
+            elif [ ! -z "$ret" ] && ! echo "$ret"|grep '443":[]' ]; then
+              echo "$ret" |tr -d '{"[]}'|sed -r 's/, ?/\n/g'|sed -r '/^\w*:$/d'|sed -r 's/^\w*:([\d\.]*)/\1/' >> ip.txt
               if [ $key == $PROXYS ]; then
                 curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
               fi
@@ -69,12 +69,13 @@ jobs:
           echo `cat $PROXYS_JSON`|tr -d '["]'|sed -r 's/, ?/\n/g' >> ip.txt
           cat ip.txt | sort | uniq > tmp.txt
           mv tmp.txt ip.txt
-          echo merge `wc -l ip.txt` >> $GITHUB_STEP_SUMMARY
+          echo merge `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
   
       - name: http test, filter
         run: |
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
           measure_ping(){
+            [ -z $1 ] && echo 'error: no ip' && exit 1
             local ip=$1
             local url=`curl -H "content-type: application/json" -A "$UA" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
@@ -96,6 +97,7 @@ jobs:
           }
           # ip port
           measure_http(){
+            [ -z $1 ] && echo 'error: no ip' && exit 1
             local ip=$1 port=$2 protocol=http
             [ -z "$port" ] && port=443
             [ $port -eq 443 ] && protocol=https
@@ -131,12 +133,13 @@ jobs:
               esac
             done
           }
-          
           measure_openai(){
+            [ -z $1 ] && echo 'error: no ip' && exit 1
             local ip=$1 port=443
             local url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"http","target":"'$ip'","locations":[{"country":"HK","limit":'$PING_LIMIT'}],"measurementOptions":{"port":'$port',"protocol":"https","method":"GET","request":{"host":"android.chat.openai.com","path":"/public-api/mobile/server_status/v1"}}' \
+              -d '{"type":"http","target":"'$ip'","locations":[{"country":"HK","limit":'$PING_LIMIT'}],"measurementOptions":{"port":'$port',"protocol":"https","request":{"method":"GET","host":"android.chat.openai.com","path":"/public-api/mobile/server_status/v1"}}}' \
               -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
+            [ -z $url ] && echo 'error: no url' && exit 1
             sleep 1
             while true; do
               local r=`curl -A "$UA" -s "$url"` n=$PING_LIMIT avg=0
@@ -177,9 +180,9 @@ jobs:
           while IFS= read -r ip; do
             measure_http $ip 80
           done < ipopenai.txt
-          echo `wc -l ip443.txt` >> $GITHUB_STEP_SUMMARY
-          echo `wc -l ip80.txt` >> $GITHUB_STEP_SUMMARY
-          echo `wc -l ipopenai.txt` >> $GITHUB_STEP_SUMMARY
+          echo `wc -l ip443.txt`| tee $GITHUB_STEP_SUMMARY
+          echo `wc -l ip80.txt` | tee $GITHUB_STEP_SUMMARY
+          echo `wc -l ipopenai.txt`| tee $GITHUB_STEP_SUMMARY
           
       - id: put-data
         name: update valid ip to server
