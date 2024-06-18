@@ -30,7 +30,7 @@ export default class KVMap {
 	KEY_PROXYS = 'proxys';
 	KEY_CFHOST = 'cfhost';
 	
-	_proxys; //entry
+	//_proxys; //entry
 	proxys = { 443:[], 80:[], openai:[] };
 	proxy = { 443:'', 80:'', openai:'' };
 	proxysLoaded;
@@ -42,11 +42,11 @@ export default class KVMap {
 	cfhostPutting;
 	constructor({KV, proxys, cfhost = []}) {
 		this.KV = KV;
-		this._proxys = proxys;
+		//this._proxys = proxys;
 		if (proxys instanceof Array)
 			this.proxys[443] = proxys;
 		else 
-			this.proxys = proxys;
+			this.proxys = { ...this.proxys, ...proxys };
 		cfhost.forEach(e => {
 			this._cfhost.add(e);
 			this.cfhost.add(e);
@@ -68,7 +68,7 @@ export default class KVMap {
 	}
 	getProxy(host, port) {
 		let key = '';
-		if (/^(\w*\.)?(openai|chatgpt)\.com$/.test(host)) {
+		if (/^(\w+\.)*(openai|chatgpt)\.com$/.test(host)) {
 			if (this.proxys['openai'].length) key = 'openai';
 			else key = 443;
 	  } else if (/443|80/.test(port)) {
@@ -99,7 +99,7 @@ export default class KVMap {
 				if (r instanceof Array)
 					this.proxys[443] = r;
 				else 
-					this.proxys = r;
+					this.proxys = { ...this.proxys, ...r };
 				this.initProxy();
 			}
 			this.proxysLoaded = true;

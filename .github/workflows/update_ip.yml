@@ -75,7 +75,7 @@ jobs:
         run: |
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
           measure_ping(){
-            [ -z $1 ] && echo 'error: no ip' && exit 1
+            [ -z $1 ] && echo 'error: no ip' && return
             local ip=$1
             local url=`curl -H "content-type: application/json" -A "$UA" \
               -d '{"type":"ping","target":"'$ip'","locations":[{"country":"HK","limit":2}]}' \
@@ -97,7 +97,7 @@ jobs:
           }
           # ip port
           measure_http(){
-            [ -z $1 ] && echo 'error: no ip' && exit 1
+            [ -z $1 ] && echo 'error: no ip' && return
             local ip=$1 port=$2 protocol=http
             [ -z "$port" ] && port=443
             [ $port -eq 443 ] && protocol=https
@@ -134,8 +134,9 @@ jobs:
             done
           }
           measure_openai(){
-            [ -z $1 ] && echo 'error: no ip' && exit 1
+            [ -z $1 ] && echo 'error: no ip' && return
             local ip=$1 port=443
+            # https://api.openai.com/compliance/cookie_requirements 
             local url=`curl -H "content-type: application/json" -A "$UA" \
               -d '{"type":"http","target":"'$ip'","locations":[{"country":"HK","limit":'$PING_LIMIT'}],"measurementOptions":{"port":'$port',"protocol":"https","request":{"method":"GET","host":"android.chat.openai.com","path":"/public-api/mobile/server_status/v1"}}}' \
               -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
