@@ -100,17 +100,17 @@ jobs:
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
             if echo "$ret"|grep error; then
               echo $ret;
-            elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
+            elif [ ! -z "$ret" ] && [ "$ret" != "[]" ]; then
               echo "get-data $1" >> $GITHUB_STEP_SUMMARY
               #curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
               #  -d "" "$CF_KV_API/$1" >> $GITHUB_STEP_SUMMARY
               echo $ret|tr -d '[]'|sed -r 's/, ?/\n/g' > tmp.txt
               
               local bak=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$2"`
-              if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ ! "$bak" = "[]" ]; then
+              if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ "$bak" != "[]" ]; then
                 echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
                 ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
-                [ "$ret" = "$bak" ] && exit;
+                [ "$ret" = "$bak" ] && echo "cfhostNoChange=true" >> $GITHUB_OUTPUT;
               fi
               
               echo `cat $3`|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
@@ -132,7 +132,8 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if ! git diff|grep "$CFHOST_JSON"; then
+          if [ $cfhostNoChange ]; then
+            # ! git diff|grep "$CFHOST_JSON";
             # git config user.name "GitHub Actions Bot"
             # git config user.email "<>"
             # git add $CFHOST_JSON

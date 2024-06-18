@@ -182,8 +182,8 @@ jobs:
             measure_http $ip 80
           done < ipopenai.txt
           echo `wc -l ip443.txt`| tee $GITHUB_STEP_SUMMARY
-          echo `wc -l ip80.txt` | tee $GITHUB_STEP_SUMMARY
-          echo `wc -l ipopenai.txt`| tee $GITHUB_STEP_SUMMARY
+          echo `wc -l ip80.txt` | tee -a $GITHUB_STEP_SUMMARY
+          echo `wc -l ipopenai.txt`| tee -a $GITHUB_STEP_SUMMARY
           
       - id: put-data
         name: update valid ip to server
