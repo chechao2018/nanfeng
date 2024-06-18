@@ -147,7 +147,7 @@ jobs:
               for t in $m; do 
                 [ $t = null ] && n=$(($n-1)) || avg=$(($avg+$t)); 
               done
-              avg=$(($avg/$n))
+              [ $n -gt 0 ] && avg=$(($avg/$n))
               case "$r" in
                 *in-progress*)
                   sleep 1; continue ;;
@@ -158,11 +158,11 @@ jobs:
                   break;;
                 *disallowed\ ISP*)
                   echo $ip:$port $url $avg disallowed ISP;
-                  echo "$ip" >> ip$port.txt;
+                  [ $avg -gt 0 ] && [ $avg -lt 1000 ] && echo "$ip" >> ip$port.txt;
                   break;;
                 *unsupported_country*)
                   echo $ip:$port $url $avg unsupported_country;
-                  echo "$ip" >> ip$port.txt;
+                  [ $avg -gt 0 ] && [ $avg -lt 1000 ] && echo "$ip" >> ip$port.txt;
                   break;;
                 *)
                   echo $ip:$port $url $avg;
@@ -177,7 +177,7 @@ jobs:
           while IFS= read -r ip; do
             measure_http $ip 80
           done < ip443.txt
-          while IFS= read -r ip; do
+          [ -s ipopenai.txt ] && while IFS= read -r ip; do
             measure_http $ip 80
           done < ipopenai.txt
           echo `wc -l ip443.txt`| tee $GITHUB_STEP_SUMMARY
