@@ -102,21 +102,24 @@ jobs:
               echo $ret;
             elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
               echo "get-data $1" >> $GITHUB_STEP_SUMMARY
-              curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
-                -d "" "$CF_KV_API/$1" >> $GITHUB_STEP_SUMMARY
-              
+              #curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
+              #  -d "" "$CF_KV_API/$1" >> $GITHUB_STEP_SUMMARY
               echo $ret|tr -d '[]'|sed -r 's/, ?/\n/g' > tmp.txt
+              
               local bak=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$2"`
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ ! "$bak" = "[]" ]; then
                 echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
                 ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
+                [ "$ret" = "$bak" ] && exit;
               fi
               
               echo `cat $3`|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
               echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > $3
-              
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
-                -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
+                  -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
+              
+              #curl -H "Authorization:Bearer $CF_API_TOKEN" $CF_SCRIPT_API/$workerName/content/v2 > s.js
+              #local old=`grep -A 1 $3 s.js|grep -v $3|tr -d ' =;'|sed -r 's/^\w+//'`
             fi
           }
           merge_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
@@ -155,8 +158,8 @@ jobs:
         name: get proxys data
         # if: ${{ github.event_name == 'workflow_call' }}
         run: |
-          if [ ! -z ${{ inputs.proxys }} ]; then
-            echo "${{ inputs.proxys }}" > $PROXYS_JSON
+          if [ ! -z '${{ inputs.proxys }}' ]; then
+            echo '${{ inputs.proxys }}' > $PROXYS_JSON
           else
             ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$PROXYS"`
             echo "$ret"|grep error && exit 443 || echo "$ret" > $PROXYS_JSON
@@ -206,7 +209,7 @@ jobs:
             echo "Warning: UUID is empty! you can fill in github action secrets then try again, or fill in cloudflare dashboard settings then it works" >> $GITHUB_STEP_SUMMARY
           fi
           if [ -z $nsId ] || [ $nsId != $CF_NAMESPACE_ID ]; then
-            [ ! -z $conf ] && conf=",$conf"
+            [ ! -z $conf ] && conf="$conf,"
             conf=$conf'"kv_namespaces":{"KV":{"namespace_id":"'$CF_NAMESPACE_ID'"}}'
           fi
           [ -z $conf ] && exit;

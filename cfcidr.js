@@ -2,8 +2,9 @@ const cfcidr = [{"1":[[0,-1],[257,-1]],"8":[[1680,-2],[1682,-1],[2535,-1],[2708,
 {"604031744":[[1093,-1],[1175,-1],[1560,-1],[8264,-2],[48080,-16],[61454,-1]],"637945600":[[0,-32],[32,-16],[80,-8],[88,-4],[92,-2],[97,-1],[98,-2],[100,-4],[106,-2],[108,-4],[160,-2],[169,-1],[192,-16],[208,-2],[224,-8],[240,-2],[243,-1],[244,-1],[256,-2],[271,-1],[304,-16],[12288,-64],[12373,-1],[12374,-1],[12552,-1],[12556,-1],[12560,-16],[17408,-16],[18176,-1],[33680,-16],[33712,-16],[34240,-32],[36000,-16],[36208,-16],[36240,-16],[36304,-16],[36320,-16],[37056,-32],[37296,-16],[38464,-16],[38752,-16],[39392,-16],[39520,-16],[39568,-16],[39632,-16],[39648,-16],[39680,-16],[40016,-16],[40032,-16]],"671348736":[[80,-4],[84,-1]],"705075393":[[80,-4],[86,-1],[88,-1],[12544,-16],[12576,-4]],"maxGroupingPrefixLen":32,"maxPrefixLen":48}];
 
 // https://stackoverflow.com/questions/503052/how-to-check-if-ip-is-in-one-of-these-subnets
+// domain notin -> false, ip notin -> 0, in -> ip version
 export default function inCfSubNet(host, list = cfcidr) {
-	let ip, ipLeft = 0, ipMid = 0, r=false;
+	let ip, ipLeft = 0, ipMid = 0, r=0;
 	const ver = { 4: { partLen: 8, partShift: 256 }, 6: { partLen: 16, partShift: 65536 } };
 	const c = (o) => {
 		let i = 0;
@@ -19,13 +20,13 @@ export default function inCfSubNet(host, list = cfcidr) {
 	if (host.includes(':')) {
 		list = list[1]
 		ip = host.split(':').map(p=>p==''?0:Number('0x'+p)).slice(0, list['maxPrefixLen']/16);
-		if(! c(ver[6])) return false;
+		if(! c(ver[6])) return r;
 		r = 6;
 	} else if (ip = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)) {
 		//let ip = host.split(".").map(Number);
 		list = list[0]
 		ip = ip.slice(1, 1+list['maxPrefixLen']/8).map(Number)
-		if(! c(ver[4])) return false;
+		if(! c(ver[4])) return r;
 		r = 4;
 	} else return false;
   
@@ -44,7 +45,7 @@ export default function inCfSubNet(host, list = cfcidr) {
 	}
 	// Match
 	let masked = ipMid & list[y][1];
-	return (masked ^ list[y][0]) == 0 ? r : false;
+	return (masked ^ list[y][0]) ? 0 : r;
 }
 
 /* console.time();

@@ -48,7 +48,7 @@ export default {
 				kvMap.loadCfhost();
 				kvMap.loadProxys();
 			}
-			console.log(`fetch() ${kvMap.proxys[0].length}(443) ${kvMap.proxys[1].length}(80), ${kvMap.cfhost.size}`)
+			console.log(`fetch() ${kvMap.proxys[443].length}(443) ${kvMap.proxys[80].length}(80) ${kvMap.proxys['openai'].length}(openai), ${kvMap.cfhost.size}`)
 			const upgradeHeader = request.headers.get('Upgrade');
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
 				const url = new URL(request.url);
@@ -288,26 +288,26 @@ async function handleTCPOutBound(remoteSocket, addressRemote, portRemote, rawCli
 	 * @returns {Promise<void>} A Promise that resolves when the retry is complete.
 	 */
 	async function retry() {
-		let proxy = kvMap.proxy[portRemote];
-		const tcpSocket = await connectAndWrite(proxy || addressRemote, portRemote)
+		const proxy = kvMap.getProxy(addressRemote, portRemote);
+		const tcpSocket = await connectAndWrite(proxy.host || addressRemote, portRemote)
 		tcpSocket.closed.catch(error => {
 			console.log('retry tcpSocket closed error', error);
-			if (/HTTP|fetch/i.test(error) && proxy) {
-				kvMap.deleteProxy(proxy, portRemote);
+			if (/HTTP|fetch/i.test(error) && proxy.host) {
+				kvMap.deleteProxy(proxy);
 			}
 		}).finally(() => {
 			safeCloseWebSocket(webSocket);
 		})
 		remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log);
 	}
-	
-	if (! kvMap.cfhost.has(addressRemote) && ! inCfSubNet(addressRemote)) {
+	let v = false;
+	if (! kvMap.cfhost.has(addressRemote) && ! (v=inCfSubNet(addressRemote))) {
 		const tcpSocket = await connectAndWrite(addressRemote, portRemote);
 		// when remoteSocket is ready, pass to websocket
 		// remote--> ws
 		if (! await remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log)) {
 			retry();
-			kvMap.tagCfhost(addressRemote);
+			(v === false) && kvMap.tagCfhost(addressRemote);
 		};
 	} else  {
 		log(`Hit proxy for ${addressRemote}`);

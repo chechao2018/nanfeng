@@ -60,7 +60,7 @@ jobs:
             if echo "$ret"|grep error; then
               echo $ret
             elif [ ! -z "$ret" ] && [ ! "$ret" = "[]" ]; then
-              echo "$ret" |tr -d '["]'|sed -r 's/, ?/\n/g' >> ip.txt
+              echo "$ret" |tr -d '{"[]}'|sed -r 's/\w+://g'|sed -r 's/, ?/\n/g' >> ip.txt
               if [ $key == $PROXYS ]; then
                 curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
               fi
@@ -108,16 +108,17 @@ jobs:
               case "$r" in
                 *in-progress*)
                   sleep 1; continue ;;
-                *authorized\":*)  
+                *authorized\":*)
                   #measure_ping $ip && echo "$ip" >> ip$port.txt; 
-                  local d=`echo $r|tr -s '{,.}' '\n'|grep expiresAt|grep -v null|tr -s '"T' ' '|awk '{printf "%s %s\n",$3,$4}'|head -n 1`
-                  [ -z $d ] || [ $((`date -d "$d" +%s`-`date +%s`)) -lt 86400 ] && break
+                  #local d=`echo $r|tr -s '{,.}' '\n'|grep expiresAt|grep -v null|tr -s '"T' ' '|awk '{printf "%s %s\n",$3,$4}'|head -n 1`
+                  #[ -z "$d" ] || [ $((`date -d "$d" +%s`-`date +%s`)) -lt 86400 ] && break
                   
                   #eval `echo $r|sed -n 's/.*total":\(\w*\),.*total":\(\w*\),.*/local a=\1 b=\2/p'`;
+                  local nulln=`echo $r|tr -s '{,}' '\n'|grep total|grep null|wc -l`
+                  [ $nulln -gt 1 ] && break;
+                  n=$(($n-$nulln))
                   local m=`echo $r|tr -s '{,}' '\n'|grep total|grep -v null|cut -d ':' -f2`
-                  for i in $m; do 
-                    [ $i = null ] && n=$(($n-1)) || avg=$(($avg+$i)); 
-                  done
+                  for t in $m; do avg=$(($avg+$t)); done
                   avg=$(($avg/$n))
                   echo $ip:$port $url $avg;
                   [ $avg -gt 0 ] && [ $avg -lt 500 ] && echo "$ip" >> ip$port.txt;
@@ -131,22 +132,66 @@ jobs:
             done
           }
           
+          measure_openai(){
+            local ip=$1 port=443
+            local url=`curl -H "content-type: application/json" -A "$UA" \
+              -d '{"type":"http","target":"'$ip'","locations":[{"country":"HK","limit":'$PING_LIMIT'}],"measurementOptions":{"port":'$port',"protocol":"https","method":"GET","request":{"host":"android.chat.openai.com","path":"/public-api/mobile/server_status/v1"}}' \
+              -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
+            sleep 1
+            while true; do
+              local r=`curl -A "$UA" -s "$url"` n=$PING_LIMIT avg=0
+              local m=`echo $r|tr -s '{,}' '\n'|grep total|cut -d ':' -f2`
+              for t in $m; do 
+                [ $t = null ] && n=$(($n-1)) || avg=$(($avg+$t)); 
+              done
+              avg=$(($avg/$n))
+              case "$r" in
+                *in-progress*)
+                  sleep 1; continue ;;
+                *status\\\":\\\"normal*statusCode\":200*)
+                  echo $ip:$port $url $avg normal;
+                  echo "$ip" >> ipopenai.txt;
+                  #echo "$ip" >> ip$port.txt;
+                  break;;
+                *disallowed\ ISP*)
+                  echo $ip:$port $url $avg disallowed ISP;
+                  echo "$ip" >> ip$port.txt;
+                  break;;
+                *unsupported_country*)
+                  echo $ip:$port $url $avg unsupported_country;
+                  echo "$ip" >> ip$port.txt;
+                  break;;
+                *)
+                  echo $ip:$port $url $avg;
+                  break;;
+              esac
+            done
+          }
+          
           while IFS= read -r ip; do
-            measure_http $ip 443
+            measure_openai $ip
           done < ip.txt
           while IFS= read -r ip; do
             measure_http $ip 80
           done < ip443.txt
+          while IFS= read -r ip; do
+            measure_http $ip 80
+          done < ipopenai.txt
           echo `wc -l ip443.txt` >> $GITHUB_STEP_SUMMARY
           echo `wc -l ip80.txt` >> $GITHUB_STEP_SUMMARY
+          echo `wc -l ipopenai.txt` >> $GITHUB_STEP_SUMMARY
           
       - id: put-data
         name: update valid ip to server
         run: |
-          [ ! -s ip443.txt ] && echo 'no valid ip with port 443' && exit 443;
-          data=[[$(echo `sed -r 's/^(.*)$/"\1"/' ip443.txt`|tr -s ' ' ',')]
-          [ -s ip80.txt ] && data=$data,[$(echo `sed -r 's/^(.*)$/"\1"/' ip80.txt`|tr -s ' ' ',')]
-          data=$data]
+          data=
+          for i in 443 80 openai; do
+            if [ -s ip$i.txt ]; then
+              [ ! -z $data ] && data=$data,
+              data=$data'"'$i'":'[$(echo `sed -r 's/^(.*)$/"\1"/' ip$i.txt`|tr -s ' ' ',')]
+            fi
+          done
+          data={$data}
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
             -d "$data" "$CF_KV_API/$PROXYS" >> $GITHUB_STEP_SUMMARY
           curl -X PUT -H "Authorization:Bearer ${{secrets.CF_API_TOKEN}}" \
