@@ -19,26 +19,29 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
+      CF_WORKER_NAME:
+        description: 'worker script name for deployment (default take repo variable `CF_WORKER_NAME`)'
+        required: false
+        default: ''
+        type: 'string'
+      CF_PAGE_NAME:
+        description: 'page project name for deployment (default take repo variable `CF_PAGE_NAME`)'
+        required: false
+        default: ''
+        type: 'string'
+      CF_PAGE_BRANCH:
+        description: 'page branch for deployment environment, empty or `main` for production env, otherwise for preview (default take repo variable `CF_PAGE_BRANCH`)'
+        required: false
+        default: ''
+        type: 'string'
       deployPage:
-        description: 'deploy worker and page (default worker and page)'
+        description: 'deploy worker and page (true: worker and page, false: worker)'
         required: false
         default: true
-        type: boolean
-      workerName:
-        description: 'worker script name for deployment (default v2)'
-        required: false
-        default: 'v2'
-        type: 'string'
-      pageName:
-        description: 'page project name for deployment (default v1)'
-        required: false
-        default: 'v1'
-        type: 'string'
-      pageBranch:
-        description: 'page branch for deployment environment, empty for production, non-empty for preview (default test)'
-        required: false
-        default: 'test'
-        type: 'string'
+        type: choice
+        options:
+          - true
+          - false
         
   workflow_call:
     inputs:
@@ -52,22 +55,27 @@ on:
       CF_API_TOKEN:
         required: true
       CF_NAMESPACE_ID:
-        required: true
-      CF_UUID:
+        required: false
+      CF_WORKER_UUID:
+        required: false
+      CF_PAGE_UUID:
         required: false
 
 env:
-  workerName: ${{inputs.workerName || 'v2'}}
-  pageName:   ${{inputs.pageName || 'v1'}}
-  pageBranch: ${{github.event_name == 'workflow_dispatch' && inputs.pageBranch || 'test'}}
-  deployPage: ${{inputs.deployPage || true }}
+  deployPage: ${{inputs.deployPage == 'true'}}
+  workerName: ${{inputs.CF_WORKER_NAME || vars.CF_WORKER_NAME}}
+  pageName:   ${{inputs.CF_PAGE_NAME || vars.CF_PAGE_NAME}}
+  pageBranch: ${{inputs.CF_PAGE_BRANCH || vars.CF_PAGE_BRANCH || 'main'}}
   EVENT_NAME: ${{github.event_name}}
-  CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID}}/values
+  
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
+  CF_SERVICE_API: https://api.cloudflare.com/client/v4/accounts/${secrets.CF_ACCOUNT_ID}/workers/services
   CF_PROJECT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/pages/projects
   CF_API_TOKEN: ${{secrets.CF_API_TOKEN}}
-  CF_NAMESPACE_ID: ${{secrets.CF_NAMESPACE_ID}}
-  CF_UUID: ${{secrets.CF_UUID}}
+  CF_WORKER_UUID: ${{secrets.CF_WORKER_UUID}}
+  CF_PAGE_UUID: ${{secrets.CF_PAGE_UUID}}
+  CF_NAMESPACE_ID: ${{secrets.CF_NAMESPACE_ID || vars.CF_NAMESPACE_ID}}
+  
   CFHOST: cfhost
   CFHOST_BAK: cfhost_bak
   CFHOST_JSON: cfhost.json
@@ -75,15 +83,19 @@ env:
   PROXYS_UPDATED: proxys_updated
   PROXYS_JSON: proxys.json
   ENTRY: _worker.js
+  UUID: UUID
   KV: KV
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  build:
+  build-deploy:
+    if: ${{secrets.CF_ACCOUNT_ID && env.CF_API_TOKEN && env.CF_NAMESPACE_ID }}
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    env:
+      CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{CF_NAMESPACE_ID}}/values
+      CF_PAGE_ENV: ${{env.pageBranch == 'main' && 'production' || 'preview'}}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -95,7 +107,7 @@ jobs:
       - id: get-data
         name: get cfhost, merge, backup
         run: |
-          [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z ${{secrets.CF_API_TOKEN}} ] || [ -z ${{secrets.CF_NAMESPACE_ID}} ] && echo "secrets required!" && exit 111;
+          #[ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z ${{secrets.CF_API_TOKEN}} ] || [ -z ${{secrets.CF_NAMESPACE_ID}} ] && echo "secrets required!" && exit 111;
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
             if echo "$ret"|grep error; then
@@ -110,10 +122,11 @@ jobs:
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ "$bak" != "[]" ]; then
                 echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
                 ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
-                [ "$ret" = "$bak" ] && echo "cfhostNoChange=true" >> $GITHUB_OUTPUT;
+                [ "$ret" = "$bak" ] && echo "cfhostNoChange=true" >> $GITHUB_ENV;
               fi
               
               echo `cat $3`|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
+              # cat tmp.txt|sed -r 's/^\s*(.*)/\1/g'
               echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > $3
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                   -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
@@ -132,7 +145,7 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if [ $cfhostNoChange ]; then
+          if [ "$cfhostNoChange" = true ]; then
             # ! git diff|grep "$CFHOST_JSON";
             # git config user.name "GitHub Actions Bot"
             # git config user.email "<>"
@@ -178,44 +191,4 @@ jobs:
           npm run esbuild
           
       - name: deploy worker, page
-        env:
-          CFENV: ${{env.pageBranch && 'preview' || 'production'}}
-        run: |
-          [ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit;
-          echo "deploy worker.." >> $GITHUB_STEP_SUMMARY
-          ret=`curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
-            -H 'Content-Type: multipart/form-data' \
-            --form "worker.js=@dist/$ENTRY;type=application/javascript+module" \
-            --form 'metadata={"main_module":"'$ENTRY'"}' \
-            --url $CF_SCRIPT_API/$workerName/content`
-          echo $ret|grep 'success": false' && echo $ret && exit 9 || echo 'success' >> $GITHUB_STEP_SUMMARY
-          
-          [ ! $deployPage ] && exit;
-          echo "deploy page.." >> $GITHUB_STEP_SUMMARY
-          #metadata='metadata={"main_module":"'$ENTRY'","bindings":[{"type": "kv_namespace","name":"KV","namespace_id":"'$CF_NAMESPACE_ID'"}]}'
-          ret=`curl -X POST -H "Authorization:Bearer $CF_API_TOKEN" \
-            -H 'Content-Type: multipart/form-data' \
-            --form "$ENTRY=@dist/$ENTRY;type=application/javascript" \
-            --form 'manifest={}' \
-            --form "branch=$pageBranch" \
-            --url $CF_PROJECT_API/$pageName/deployments`
-          echo $ret|grep 'success": false' && echo $ret && exit 9 || echo 'success' >> $GITHUB_STEP_SUMMARY
-            
-          nsId=`echo $ret | tr -s '}' '\n'|grep $KV|cut -d '"' -f8`
-          uuid=`echo $ret | tr -s '}' '\n'|grep UUID|cut -d '"' -f12`
-          conf=
-          if [ ! -z $CF_UUID ]; then
-            [ "$uuid" != "$CF_UUID" ] && conf='"env_vars":{"UUID":{"type":"plain_text","value":"'$CF_UUID'"}}'
-          elif [ -z $uuid ]; then
-            echo "Warning: UUID is empty! you can fill in github action secrets then try again, or fill in cloudflare dashboard settings then it works" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ -z $nsId ] || [ $nsId != $CF_NAMESPACE_ID ]; then
-            [ ! -z $conf ] && conf="$conf,"
-            conf=$conf'"kv_namespaces":{"KV":{"namespace_id":"'$CF_NAMESPACE_ID'"}}'
-          fi
-          [ -z $conf ] && exit;
-          ret=`curl -X PATCH -H "Authorization:Bearer $CF_API_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"deployment_configs":{"'$CFENV'":{'$conf'}}}' \
-            $CF_PROJECT_API/$pageName`
-          echo $ret|grep 'success": false' && echo $ret && exit 9 || echo 'patch success' >> $GITHUB_STEP_SUMMARY
+        run: ./deploy.sh
