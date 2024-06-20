@@ -108,7 +108,7 @@ jobs:
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
             if echo "$ret"|grep error; then
-              echo $ret;
+              echo "$ret"|grep 'namespace not found' && exit 1
             elif [ ! -z "$ret" ] && [ "$ret" != "[]" ]; then
               echo "get-data $1" >> $GITHUB_STEP_SUMMARY
               #curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
