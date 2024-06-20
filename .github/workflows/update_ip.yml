@@ -18,6 +18,7 @@ on:
 env:
   CF_API_TOKEN: ${{secrets.CF_API_TOKEN}}
   CF_NAMESPACE_ID: ${{secrets.CF_NAMESPACE_ID || vars.CF_NAMESPACE_ID}}
+  CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID || vars.CF_NAMESPACE_ID}}/storage/kv/namespaces/$CF_NAMESPACE_ID/values
   PING_API: https://api.globalping.io/v1/measurements
   PING_LIMIT: ${{vars.PING_COUNTRY || 3}}
   PING_COUNTRY: ${{vars.PING_COUNTRY || 'HK'}}
@@ -31,8 +32,6 @@ env:
 jobs:
   # This workflow contains a single job called "build"
   update-ip:
-    env:
-      CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/$CF_NAMESPACE_ID/values
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     outputs:
