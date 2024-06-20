@@ -190,4 +190,4 @@ jobs:
       - name: deploy worker, page
         env:
           CF_PAGE_ENV: ${{env.pageBranch == 'main' && 'production' || 'preview'}}
-        run: ./deploy.sh
+        run: bash ./deploy.sh
