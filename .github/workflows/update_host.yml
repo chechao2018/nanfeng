@@ -107,9 +107,8 @@ jobs:
           [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z $CF_API_TOKEN ] || [ -z $CF_NAMESPACE_ID ] && echo "secrets and CF_NAMESPACE_ID required!" && exit 1;
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
-            echo "-$ret-"
             if echo "$ret"|grep error; then
-              echo "$ret"|grep 'namespace not found' && exit 1
+              grep 'namespace not found' <<< "$ret" && exit 1 || echo "$ret"
             elif [ ! -z "$ret" ] && [ "$ret" != "[]" ]; then
               echo "get-data $1" >> $GITHUB_STEP_SUMMARY
               #curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
@@ -117,11 +116,10 @@ jobs:
               echo $ret|tr -d '[]'|sed -r 's/, ?/\n/g' > tmp.txt
               
               local bak=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$2"`
-              echo "--$bak--"
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ "$bak" != "[]" ]; then
                 echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
                 ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
-                [ "$ret" = "$bak" ] && echo "cfhostNoChange=true" >> $GITHUB_ENV;
+                [ "$ret" = "$bak" ] && echo "cfhostChanged=false" >> $GITHUB_ENV;
               fi
               
               echo `cat $3`|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
@@ -144,7 +142,7 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if [ "$cfhostNoChange" = true ]; then
+          if [ "$cfhostChanged" = false ]; then
             # ! git diff|grep "$CFHOST_JSON";
             # git config user.name "GitHub Actions Bot"
             # git config user.email "<>"
@@ -175,7 +173,7 @@ jobs:
             echo '${{ inputs.proxys }}' > $PROXYS_JSON
           else
             ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$PROXYS"`
-            echo "$ret"|grep error && exit 443 || echo "$ret" > $PROXYS_JSON
+            grep error <<< "$ret" && echo "$ret" || echo "$ret" > $PROXYS_JSON
           fi
           
       - name: setup node

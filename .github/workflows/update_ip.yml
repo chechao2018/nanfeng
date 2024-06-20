@@ -62,7 +62,7 @@ jobs:
           for key in $PROXYS_BAK $PROXYS; do
             ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$key"`
             if echo "$ret"|grep error; then
-              echo "$ret"|grep 'namespace not found' && exit 1
+              grep 'namespace not found' <<< "$ret" && exit 1 || echo "$ret"
             elif [ ! -z "$ret" ] && ! echo "$ret"|grep '443":[]' ]; then
               echo "$ret" |tr -d '{"[]}'|sed -r 's/, ?/\n/g'|sed -r '/^\w*:$/d'|sed -r 's/^\w*:([\d\.]*)/\1/' >> ip.txt
               if [ $key == $PROXYS ]; then
