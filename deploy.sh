@@ -8,13 +8,6 @@ FORM_FILE="$ENTRY=@dist/$ENTRY;type=application/javascript+module"
 MAIN_MODULE='"main_module":"'$ENTRY'"'
 PLACEMENT='"placement":{"mode":"smart"}'
 #--------------------------
-worker_subdomain_enabled(){
-	curl -H "$AUTH" $CF_SERVICE_API/$workerName/environments/production/subdomain|grep 'enabled": true'
-}
-enable_worker_subdomain(){
-	local data='{"enabled":true}'
-	curl -X POST -H "$AUTH" -H "$TYPE_JSON" -d "$data" $CF_SCRIPT_API/$workerName/subdomain
-}
 upload_worker(){
 	local fMetadata='metadata={'$MAIN_MODULE,$PLACEMENT',"bindings":['$1']}'
 	curl -X PUT -H "$AUTH" -H "$TYPE_FORMDATA" -F "$FORM_FILE" -F "$fMetadata" \
@@ -32,6 +25,13 @@ patch_worker_settings(){
 	local fSettings='settings={'$MAIN_MODULE,$PLACEMENT',"bindings":['$1']}'
 	curl -X PATCH -H "$AUTH" -H "$TYPE_FORMDATA" -F "$fSettings" \
 		$CF_SCRIPT_API/$workerName/settings
+}
+worker_subdomain_enabled(){
+	curl -H "$AUTH" $CF_SERVICE_API/$workerName/environments/production/subdomain|grep 'enabled": true'
+}
+enable_worker_subdomain(){
+	local data='{"enabled":true}'
+	curl -X POST -H "$AUTH" -H "$TYPE_JSON" -d "$data" $CF_SCRIPT_API/$workerName/subdomain
 }
 page_deployment(){
 	local qs="?page=1&per_page=1&sort_by=created_on&sort_order=desc&env=$CF_PAGE_ENV"
@@ -123,5 +123,6 @@ deploy_page(){
 	ret=`upload_page`
 	post_handle "$ret" 'upload_page' || exit 1
 }
-[ ! -z $workerName ] && deploy_worker
-[ "$deployPage" = "true" ] && [ ! -z $pageName ] && deploy_page
+[ ! -z $workerName ] && deploy_worker || echo 'empty CF_WORKER_NAME'
+[ "$deployPage" = false ] && echo 'no deploy page' && exit
+[ ! -z $pageName ] && deploy_page || echo 'empty CF_PAGE_NAME'

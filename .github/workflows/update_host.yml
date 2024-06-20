@@ -62,7 +62,7 @@ on:
         required: false
 
 env:
-  deployPage: ${{inputs.deployPage == 'true'}}
+  deployPage: ${{inputs.deployPage != 'false'}}
   workerName: ${{inputs.CF_WORKER_NAME || vars.CF_WORKER_NAME}}
   pageName:   ${{inputs.CF_PAGE_NAME || vars.CF_PAGE_NAME}}
   pageBranch: ${{inputs.CF_PAGE_BRANCH || vars.CF_PAGE_BRANCH || 'main'}}
