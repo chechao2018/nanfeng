@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/$CF_NAMESPACE_ID/values
-      CF_PAGE_ENV: ${{env.pageBranch == 'main' && 'production' || 'preview'}}
+      CF_PAGE_ENV: $pageBranch == 'main' && 'production' || 'preview'
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
