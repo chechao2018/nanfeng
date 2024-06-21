@@ -151,7 +151,7 @@ jobs:
             # git push
             echo "cfhost no change" >> $GITHUB_STEP_SUMMARY
             
-            [ ! -z ${{ inputs.proxys }} ] || [ $EVENT_NAME != schedule ] && exit;
+            [ ! -z '${{ inputs.proxys }}' ] || [ $EVENT_NAME != schedule ] && exit;
             
             # cancel when trigger on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]
             # and when now - (updated time of proxys data) >= 7200s

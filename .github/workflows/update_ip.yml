@@ -22,6 +22,7 @@ env:
   PING_API: https://api.globalping.io/v1/measurements
   PING_LIMIT: ${{vars.PING_COUNTRY || 3}}
   PING_COUNTRY: ${{vars.PING_COUNTRY || 'HK'}}
+  HTTPS_DELAY: ${{vars.HTTPS_DELAY || 1000}}
   PROXYS: proxys
   PROXYS_BAK: proxys_bak
   PROXYS_UPDATED: proxys_updated
@@ -74,7 +75,7 @@ jobs:
           cat ip.txt | sort | uniq > tmp.txt
           mv tmp.txt ip.txt
           echo merge `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
-  
+
       - name: http test, filter
         run: |
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
@@ -127,7 +128,7 @@ jobs:
                   for t in $m; do avg=$(($avg+$t)); done
                   avg=$(($avg/$n))
                   echo $ip:$port $url $avg;
-                  [ $avg -gt 0 ] && [ $avg -lt 500 ] && echo "$ip" >> ip$port.txt;
+                  [ $avg -gt 0 ] && [ $avg -lt $$HTTPS_DELAY ] && echo "$ip" >> ip$port.txt;
                   break ;;
                 *cloudflare*)
                   [ $port -eq 80 ] && echo $ip:$port $url; echo "$ip" >> ip$port.txt; 
@@ -163,11 +164,11 @@ jobs:
                   break;;
                 *disallowed\ ISP*)
                   echo $ip:$port $url $avg disallowed ISP;
-                  [ $avg -gt 0 ] && [ $avg -lt 1000 ] && echo "$ip" >> ip$port.txt;
+                  [ $avg -gt 0 ] && [ $avg -lt $HTTPS_DELAY ] && echo "$ip" >> ip$port.txt;
                   break;;
                 *unsupported_country*)
                   echo $ip:$port $url $avg unsupported_country;
-                  [ $avg -gt 0 ] && [ $avg -lt 1000 ] && echo "$ip" >> ip$port.txt;
+                  [ $avg -gt 0 ] && [ $avg -lt $HTTPS_DELAY ] && echo "$ip" >> ip$port.txt;
                   break;;
                 *)
                   echo $ip:$port $url $avg;

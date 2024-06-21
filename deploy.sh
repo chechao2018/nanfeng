@@ -7,9 +7,10 @@ TYPE_JSON="Content-Type:application/json"
 FORM_FILE="$ENTRY=@dist/$ENTRY;type=application/javascript+module"
 MAIN_MODULE='"main_module":"'$ENTRY'"'
 PLACEMENT='"placement":{"mode":"smart"}'
+COMPATIBILITY_DATE='compatibility_date":"2024-06-20"'
 #--------------------------
 upload_worker(){
-	local fMetadata='metadata={'$MAIN_MODULE,$PLACEMENT',"bindings":['$1']}'
+	local fMetadata='metadata={'$MAIN_MODULE,$PLACEMENT,$COMPATIBILITY_DATE',"bindings":['$1']}'
 	curl -X PUT -H "$AUTH" -H "$TYPE_FORMDATA" -F "$FORM_FILE" -F "$fMetadata" \
 		$CF_SCRIPT_API/$workerName
 }
@@ -22,7 +23,7 @@ get_worker_settings(){
 	curl -H "$AUTH" $CF_SCRIPT_API/$workerName/settings
 }
 patch_worker_settings(){
-	local fSettings='settings={'$MAIN_MODULE,$PLACEMENT',"bindings":['$1']}'
+	local fSettings='settings={'$MAIN_MODULE,$PLACEMENT,$COMPATIBILITY_DATE',"bindings":['$1']}'
 	curl -X PATCH -H "$AUTH" -H "$TYPE_FORMDATA" -F "$fSettings" \
 		$CF_SCRIPT_API/$workerName/settings
 }
@@ -84,8 +85,9 @@ deploy_worker(){
 		ret=`get_worker_settings`
 		nsid=`jq -r '.result.bindings[] | select(.name == "'$KV'") | .namespace_id' <<< $ret`
 		uuid=`jq -r '.result.bindings[] | select(.name == "'$UUID'") | .text' <<< $ret`
+		compatDate=`jq -r '.result.compatibility_date' <<< $ret`
 		[ -z $uuid ] && warn_no_uuid WORKER
-		if [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ]; then
+		if [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ] || [ -z $compatDate ]; then
 			bindings=`generate_bindings $uuid`
 			ret=`patch_worker_settings $bindings`
 			post_handle "$ret" 'patch_worker_settings' || exit 1
