@@ -7,7 +7,7 @@ TYPE_JSON="Content-Type:application/json"
 FORM_FILE="$ENTRY=@dist/$ENTRY;type=application/javascript+module"
 MAIN_MODULE='"main_module":"'$ENTRY'"'
 PLACEMENT='"placement":{"mode":"smart"}'
-COMPATIBILITY_DATE='compatibility_date":"2024-06-20"'
+COMPATIBILITY_DATE='"compatibility_date":"2024-06-20"'
 #--------------------------
 upload_worker(){
 	local fMetadata='metadata={'$MAIN_MODULE,$PLACEMENT,$COMPATIBILITY_DATE',"bindings":['$1']}'
