@@ -50,8 +50,11 @@ jobs:
           fi
       - name: curl proxy test
         run: |
+          host='speed.cloudflare.com'
           if [ ! -z '${{ inputs.ip }}' ]; then
             for ip in '${{ inputs.ip }}'; do
-              curl --resolve speed.cloudflare.com:443:$ip https://speed.cloudflare.com/cdn-cgi/trace
+              echo $ip
+              curl --connect-timeout 5 --resolve $host:443:$ip https://$host/cdn-cgi/trace
+              curl --connect-timeout 5 -x $ip:443 https://$host/cdn-cgi/trace
             done
           fi
