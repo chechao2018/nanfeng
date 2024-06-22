@@ -18,6 +18,12 @@ on:
         required: false
         default: '[{"1.1":"2.2"},"3.3",4]'
         type: 'string'
+      ip:
+        description: 'proxy ip'
+        required: false
+        default: '47.242.107.109'
+        type: 'string'
+        
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -41,4 +47,11 @@ jobs:
             echo '${{ inputs.json }}' > test.json
             cat test.json
             jq --help
+          fi
+      - name: curl proxy test
+        run: |
+          if [ ! -z '${{ inputs.ip }}' ]; then
+            for ip in '${{ inputs.ip }}'; do
+              curl --resolve speed.cloudflare.com:443:$ip https://speed.cloudflare.com/cdn-cgi/trace
+            done
           fi
