@@ -50,7 +50,7 @@ jobs:
           fi
       - name: curl proxy test
         run: |
-          set +e
+          #set +e
           host1='speed.cloudflare.com'; path1='/cdn-cgi/trace'
           host2='android.chat.openai.com'; path2='/public-api/mobile/server_status/v1'
           curl http://ip.sb
@@ -58,7 +58,8 @@ jobs:
             for ip in ${{ inputs.ip }}; do
               echo ip=$ip
               if curl -I --connect-timeout 5 --resolve $host1:443:$ip https://$host1$path1 2>&1; then
-                curl --connect-timeout 5 --resolve $host2:443:$ip https://$host2$path2 2>&1
+                r=`curl --connect-timeout 5 -i --resolve $host2:443:$ip https://$host2$path2 2>&1`
+                echo $r;
               fi
             done
             echo 'finished'
