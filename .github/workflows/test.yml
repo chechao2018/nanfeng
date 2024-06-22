@@ -52,7 +52,7 @@ jobs:
         run: |
           host='speed.cloudflare.com'
           if [ ! -z '${{ inputs.ip }}' ]; then
-            for ip in '${{ inputs.ip }}'; do
+            for ip in ${{ inputs.ip }}; do
               echo $ip
               curl --connect-timeout 5 --resolve $host:443:$ip https://$host/cdn-cgi/trace
               curl --connect-timeout 5 -x $ip:443 https://$host/cdn-cgi/trace
