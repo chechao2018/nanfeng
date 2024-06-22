@@ -50,7 +50,7 @@ jobs:
           fi
       - name: curl proxy test
         run: |
-          #set +e
+          set +e
           host1='speed.cloudflare.com'; path1='/cdn-cgi/trace'
           host2='android.chat.openai.com'; path2='/public-api/mobile/server_status/v1'
           curl http://ip.sb
