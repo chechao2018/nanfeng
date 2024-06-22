@@ -22,7 +22,9 @@ env:
   PING_API: https://api.globalping.io/v1/measurements
   PING_LIMIT: ${{vars.PING_COUNTRY || 3}}
   PING_COUNTRY: ${{vars.PING_COUNTRY || 'HK'}}
-  HTTPS_DELAY: ${{vars.HTTPS_DELAY || 1000}}
+  HTTP_DELAY: ${{vars.HTTP_DELAY || 1000}}
+  TRACE_HOST: ${{vars.TRACE_HOST || 'time.cloudflare.com'}}
+  TRACE_PATH: /cdn-cgi/trace
   PROXYS: proxys
   PROXYS_BAK: proxys_bak
   PROXYS_UPDATED: proxys_updated
@@ -41,22 +43,15 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
-      # Runs a single command using the runners shell
-      #- name: Run a one-line script
-      #  run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      #- name: Run a multi-line script
-      #  run: |
-      #    echo Add other actions to build,
-      #    echo test, and deploy your project.
       - name: download ip zip file, unzip, merge, uniq
         run: |
           [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z $CF_API_TOKEN ] || [ -z $CF_NAMESPACE_ID ] && echo "secrets and CF_NAMESPACE_ID required!" && exit 1;
-          curl -o ip.zip https://zip.baipiao.eu.org
-          unzip ip.zip -d ip
-          cat ip/*.txt | sort | uniq > ip.txt
-          echo zip `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
+          #curl -o ip.zip https://zip.baipiao.eu.org
+          #unzip ip.zip -d ip
+          #cat ip/*.txt | sort | uniq > ip.txt
+          curl -o ip.txt https://ipupdate.baipiao.eu.org
+          [ $? -eq 0 ] || echo > ip.txt
+          echo ipupdate `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
           
       - name: backup original data, merge
         run: |
@@ -78,114 +73,131 @@ jobs:
 
       - name: http test, filter
         run: |
+          set +e
           UA="Mozilla/5.0 Chrome/107.0.0.0 Safari/537.36"
-          measure_ping(){
-            [ -z $1 ] && echo 'error: no ip' && return
-            local ip=$1
+          TRACE_URL="$TRACE_HOST$TRACE_PATH"
+          OPENAI_HOST='android.chat.openai.com'; OPENAI_PATH='/public-api/mobile/server_status/v1'; 
+          OPENAI_URL="$OPENAI_HOST$OPENAI_PATH"
+          # ip port host path method?
+          req_data(){
+            local p=http; [ $2 -eq 443 ] && p=https
+            local m=HEAD; [ ! -z $5 ] && m=$5
+            echo '{"type":"http","target":"'$1'","locations":[{"country":"'$PING_COUNTRY'","limit":'$PING_LIMIT'}],"measurementOptions":{"port":'$2',"protocol":"'$p'","request":{"method":"'$m'","host":"'$3'","path":"'$4'"}}}'
+          }
+          # ret
+          get_avg(){
+            local n=$PING_LIMIT avg=0
+            local m=`echo $1|tr -s '{,}' '\n'|grep total|cut -d ':' -f2`
+            for t in $m; do 
+              [ $t = null ] && n=$(($n-1)) || avg=$(($avg+$t)); 
+            done
+            [ $n -gt 0 ] && echo $(($avg/$n)) || echo 0
+          }
+          # data
+          measure(){
             local url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"ping","target":"'$ip'","locations":[{"country":"'$PING_COUNTRY'","limit":'$PING_LIMIT'}]}' \
-              -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
+              -d "$1" -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
+            [ -z $url ] && echo 'error: no url' && exit 1
             sleep 1
             while true; do
               local r=`curl -A "$UA" -s "$url"`
-              case "$r" in
-                *in-progress*)
-                  sleep 1; continue ;;
-                *loss\":0*)
-                  local avg=`echo $r|sed -n 's/.*avg":\(\w*\).*/\1/p'`
-                  ([ "$avg" = "null" ] || [ $avg -ge 200 ]) && return 1
-                  echo $ip $url $avg; return 0 ;;
-                *)
-                  return 1 ;;
-              esac
+              grep -q 'in-progress' <<< "$r" && sleep 1 && continue;
+              break;
             done
+            echo -n "$url" >&2
+            echo "$r"
           }
           # ip port
           measure_http(){
             [ -z $1 ] && echo 'error: no ip' && return
-            local ip=$1 port=$2 protocol=http
+            local ip=$1 port=$2
             [ -z "$port" ] && port=443
-            [ $port -eq 443 ] && protocol=https
-            local url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"http","target":"'$ip'","locations":[{"country":"'$PING_COUNTRY'","limit":'$PING_LIMIT'}],"measurementOptions":{"port":"'$port'","protocol":"'$protocol'"}}' \
-              -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
-            sleep 1
-            while true; do
-              local r=`curl -A "$UA" -s "$url"` n=$PING_LIMIT avg=0
-              case "$r" in
-                *in-progress*)
-                  sleep 1; continue ;;
-                *authorized\":*)
-                  #measure_ping $ip && echo "$ip" >> ip$port.txt; 
-                  #local d=`echo $r|tr -s '{,.}' '\n'|grep expiresAt|grep -v null|tr -s '"T' ' '|awk '{printf "%s %s\n",$3,$4}'|head -n 1`
-                  #[ -z "$d" ] || [ $((`date -d "$d" +%s`-`date +%s`)) -lt 86400 ] && break
-                  
-                  #eval `echo $r|sed -n 's/.*total":\(\w*\),.*total":\(\w*\),.*/local a=\1 b=\2/p'`;
-                  local nulln=`echo $r|tr -s '{,}' '\n'|grep total|grep null|wc -l`
-                  [ $nulln -gt 1 ] && break;
-                  n=$(($n-$nulln))
-                  local m=`echo $r|tr -s '{,}' '\n'|grep total|grep -v null|cut -d ':' -f2`
-                  for t in $m; do avg=$(($avg+$t)); done
-                  avg=$(($avg/$n))
-                  echo $ip:$port $url $avg;
-                  [ $avg -gt 0 ] && [ $avg -lt $$HTTPS_DELAY ] && echo "$ip" >> ip$port.txt;
-                  break ;;
-                *cloudflare*)
-                  [ $port -eq 80 ] && echo $ip:$port $url; echo "$ip" >> ip$port.txt; 
-                  break ;;
-                *)
-                  break ;;
-              esac
-            done
+            local d=`req_data "$ip" $port "$TRACE_HOST" "$TRACE_PATH"`
+            local r=`measure $d`
+            local avg=0
+            avg=`get_avg "$r"`
+            local msg=" $ip:$port $avg"
+            case "$r" in
+              #*authorized\":*)
+                #local d=`echo $r|tr -s '{,.}' '\n'|grep expiresAt|grep -v null|tr -s '"T' ' '|awk '{printf "%s %s\n",$3,$4}'|head -n 1`
+                #[ -z "$d" ] || [ $((`date -d "$d" +%s`-`date +%s`)) -lt 86400 ]
+             *cloudflare*statusCode\":200*)
+                echo "$msg"
+                [ $avg -gt 0 ] && [ $avg -lt $HTTP_DELAY ] && echo "$ip" >> ip$port.txt;
+                ;;
+              *)
+                echo
+                ;;
+            esac
           }
           measure_openai(){
             [ -z $1 ] && echo 'error: no ip' && return
             local ip=$1 port=443
             # https://api.openai.com/compliance/cookie_requirements 
-            local url=`curl -H "content-type: application/json" -A "$UA" \
-              -d '{"type":"http","target":"'$ip'","locations":[{"country":"'$PING_COUNTRY'","limit":'$PING_LIMIT'}],"measurementOptions":{"port":'$port',"protocol":"https","request":{"method":"GET","host":"android.chat.openai.com","path":"/public-api/mobile/server_status/v1"}}}' \
-              -si "$PING_API"|grep location|awk '{print $2}'|tr -d '\n\r'`
-            [ -z $url ] && echo 'error: no url' && exit 1
-            sleep 1
-            while true; do
-              local r=`curl -A "$UA" -s "$url"` n=$PING_LIMIT avg=0
-              local m=`echo $r|tr -s '{,}' '\n'|grep total|cut -d ':' -f2`
-              for t in $m; do 
-                [ $t = null ] && n=$(($n-1)) || avg=$(($avg+$t)); 
-              done
-              [ $n -gt 0 ] && avg=$(($avg/$n))
-              case "$r" in
-                *in-progress*)
-                  sleep 1; continue ;;
-                *status\\\":\\\"normal*statusCode\":200*)
-                  echo $ip:$port $url $avg normal;
-                  echo "$ip" >> ipopenai.txt;
-                  #echo "$ip" >> ip$port.txt;
-                  break;;
-                *disallowed\ ISP*)
-                  echo $ip:$port $url $avg disallowed ISP;
-                  [ $avg -gt 0 ] && [ $avg -lt $HTTPS_DELAY ] && echo "$ip" >> ip$port.txt;
-                  break;;
-                *unsupported_country*)
-                  echo $ip:$port $url $avg unsupported_country;
-                  [ $avg -gt 0 ] && [ $avg -lt $HTTPS_DELAY ] && echo "$ip" >> ip$port.txt;
-                  break;;
-                *)
-                  echo $ip:$port $url $avg;
-                  break;;
-              esac
-            done
+            local d=`req_data "$ip" $port "$OPENAI_HOST" "$OPENAI_PATH" GET`
+            local r=`measure $d`
+            local avg=0
+            avg=`get_avg "$r"`
+            local msg=" $ip:$port $avg"
+            case "$r" in
+              *status\\\":\\\"normal*statusCode\":200*)
+                echo "$msg normal"
+                echo "$ip" >> ipopenai.txt
+                ;;
+              *disallowed\ ISP*)
+                echo "$msg disallowed ISP"
+              #	[ $avg -gt 0 ] && [ $avg -lt $HTTP_DELAY ] && echo "$ip" >> ip$port.txt
+              #	;;
+              *unsupported_country*)
+                echo "$msg unsupported_country"
+              #	[ $avg -gt 0 ] && [ $avg -lt $HTTP_DELAY ] && echo "$ip" >> ip$port.txt
+              #	;;
+              *)
+                echo "$msg"
+                ;;
+            esac
           }
           
+          probe_http(){
+            [ -z $1 ] && echo 'error: no ip' && return
+            local ip=$1 port=$2 p=http
+            [ -z "$2" ] && port=443
+            [ $port -eq 443 ] && p=https
+            eval `curl -I --connect-timeout 5 -so /dev/null -w 'local code=%{http_code} time=%{time_connect}' --resolve $TRACE_HOST:$port:$ip $p://$TRACE_URL`
+            if [ "$code" = 200 ]; then
+              local ms=`echo "scale=0; $time*1000/1" | bc`
+              if [ $ms -gt 0 ] && [ $ms -lt $HTTP_DELAY ]; then
+                echo $ip:$port $ms
+                echo $ip >> ip$port.txt
+              fi
+            fi
+          }
+          probe_openai(){
+            [ -z $1 ] && echo 'error: no ip' && return
+            local ip=$1 port=443 p=https
+            local r=`curl --connect-timeout 5 -s -w ' code=%{http_code} time=%{time_connect}' --resolve $OPENAI_HOST:$port:$ip $p://$OPENAI_URL`
+            eval `echo $r|sed -r 's/^.*(code=.*)$/local \1/'`
+            if [ ! -z $code ] && [ $code != 000 ]; then
+              #local ms=`echo "scale=0; $time*1000/1" | bc`
+              echo $ip:$port $r
+              [ $code = 200 ] && echo $ip >> ipopenai.txt
+            fi
+          }
+          
+          # while IFS= read -r ip; do
+            # measure_http $ip 443
+          # done < ip.txt
+          # while IFS= read -r ip; do
+            # measure_openai $ip
+            # measure_http $ip 80
+          # done < ip443.txt
           while IFS= read -r ip; do
-            measure_openai $ip
+            probe_http $ip 443
           done < ip.txt
           while IFS= read -r ip; do
-            measure_http $ip 80
+            probe_openai $ip
+            probe_http $ip 80
           done < ip443.txt
-          [ -s ipopenai.txt ] && while IFS= read -r ip; do
-            measure_http $ip 80
-          done < ipopenai.txt
           echo `wc -l ip443.txt`| tee $GITHUB_STEP_SUMMARY
           echo `wc -l ip80.txt` | tee -a $GITHUB_STEP_SUMMARY
           echo `wc -l ipopenai.txt`| tee -a $GITHUB_STEP_SUMMARY
@@ -207,13 +219,14 @@ jobs:
             -d "`date +%s`" "$CF_KV_API/$PROXYS_UPDATED"
           echo "data=$data" >> $GITHUB_OUTPUT
           
-      # - name: upload ip file
-        # uses: actions/upload-artifact@v4
-        # with:
-          # name: cfproxys
-          # path: |
-            # ip443.txt
-            # ip80.txt
+      - name: upload ip file
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfproxys
+          path: |
+            ip443.txt
+            ip80.txt
+            ipopenai.txt
             
   deploy:
     needs: update-ip
