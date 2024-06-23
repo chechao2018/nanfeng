@@ -144,12 +144,12 @@ jobs:
                 echo "$msg normal"
                 echo "$ip" >> ipopenai.txt
                 ;;
-              *disallowed\ ISP*)
-                echo "$msg disallowed ISP"
+              #*disallowed\ ISP*)
+              #  echo "$msg disallowed ISP"
               #	[ $avg -gt 0 ] && [ $avg -lt $HTTP_DELAY ] && echo "$ip" >> ip$port.txt
-              #	;;
-              *unsupported_country*)
-                echo "$msg unsupported_country"
+              	;;
+              #*unsupported_country*)
+              #  echo "$msg unsupported_country"
               #	[ $avg -gt 0 ] && [ $avg -lt $HTTP_DELAY ] && echo "$ip" >> ip$port.txt
               #	;;
               *)
