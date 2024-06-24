@@ -62,7 +62,14 @@ export default {
 						});
 					}
 					case `/${userID_Path}`: {
-						const vConfig = getVConfig(userID, request.headers.get('Host'));
+						const host = request.headers.get('Host')
+						if (/curl|wget/.test(request.headers.get('User-Agent'))) {
+							return new Response(vBaseConfig(userID, host, 443, true), {
+								status: 200,
+								headers: { "Content-Type": "text/plain;charset=utf-8" }
+							})
+						}
+						const vConfig = getVConfig(userID, host);
 						return new Response(`${vConfig}`, {
 							status: 200,
 							headers: {
@@ -717,6 +724,10 @@ async function handleUDPOutBound(webSocket, vResponseHeader, log) {
 const at = 'QA==';
 const pt = 'dmxlc3M=';
 const ed = 'RUR0dW5uZWw=';
+function vBaseConfig(uuid, host, port, tls=false, remark='') {
+	const tlsParam = tls ? `security=tls&sni=${host}`: 'security=none'
+	return `${atob(pt)}://${uuid}\u0040${host}:${port}?${tlsParam}&encryption=none&fp=randomized&type=ws&host=${host}&path=%2F%3Fed%3D2048#${host}${remark}`;
+}
 /**
  *
  * @param {string} userID - single or comma separated userIDs
@@ -724,7 +735,6 @@ const ed = 'RUR0dW5uZWw=';
  * @returns {string}
  */
 function getVConfig(userIDs, hostName) {
-	const commonUrlPart = `:443?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`;
 	const hashSeparator = "################################################################";
 
 	// Split the userIDs into an array
@@ -732,8 +742,8 @@ function getVConfig(userIDs, hostName) {
 
 	// Prepare output string for each userID
 	const output = userIDArray.map((userID) => {
-		const vMain = atob(pt)+'://' + userID + '\u0040' + hostName + commonUrlPart;
-		const vSec = atob(pt)+'://' + userID + '\u0040' + domains[0] + commonUrlPart;
+		const vMain = vBaseConfig(userID, hostName, 443, true);
+		const vSec = vBaseConfig(domains[0], 443, true);
 		return `<h2>UUID: ${userID}</h2>${hashSeparator}\nv2ray default ip
 ---------------------------------------------------------------
 ${vMain}
@@ -776,7 +786,7 @@ ${vSec}
 	<meta property='og:title' content='EDtunnel - VLESS configuration and subscribe output' />
 	<meta property='og:description' content='Use cloudflare pages and worker severless to implement v protocol' />
 	<meta property='og:url' content='https://${hostName}/' />
-	<meta property='og:image' content='https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(atob(pt)+`://${userIDs.split(",")[0]}\u0040${hostName}${commonUrlPart}`)}' />
+	<meta property='og:image' content='https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(vBaseConfig(userIDs.split(",")[0], hostName, 443, true))}' />
 	<meta name='twitter:card' content='summary_large_image' />
 	<meta name='twitter:title' content='EDtunnel - VLESS configuration and subscribe output' />
 	<meta name='twitter:description' content='Use cloudflare pages and worker severless to implement v protocol' />
@@ -860,25 +870,21 @@ const portSet_https = new Set([443, 8443, 2053, 2096, 2087, 2083]);
 
 function createVSub(userID_Path, hostName) {
 	const userIDArray = userID_Path.includes(',') ? userID_Path.split(',') : [userID_Path];
-	const commonUrlPart_http = `?encryption=none&security=none&fp=random&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#`;
-	const commonUrlPart_https = `?encryption=none&security=tls&sni=${hostName}&fp=random&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#`;
 
 	const output = userIDArray.flatMap((userID) => {
 		const httpConfigurations = hostName.includes('pages.dev')? [] 
 			: Array.from(portSet_http).flatMap((port) => {
-				const urlPart = `${hostName}-HTTP-${port}`;
 				const vMainHttp = hostName.includes('workers.dev')? []
-					: atob(pt)+'://' + userID + '\u0040' + hostName + ':' + port + commonUrlPart_http + urlPart;
+					: vBaseConfig(userID, hostName, port, false, `-HTTP-${port}`);
 				return domains.flatMap((domain) => {
-					return atob(pt)+'://' + userID + '\u0040' + domain + ':' + port + commonUrlPart_http + urlPart + '-' + domain;
+					return vBaseConfig(userID, domain, port, false, `-HTTP-${port}-${domain}`);
 				}).concat(vMainHttp);
 			});
 		const httpsConfigurations = Array.from(portSet_https).flatMap((port) => {
-			const urlPart = `${hostName}-HTTPS-${port}`;
 			const vMainHttps = hostName.includes('workers.dev')? [] 
-				: atob(pt)+'://' + userID + '\u0040' + hostName + ':' + port + commonUrlPart_https + urlPart;
+				: vBaseConfig(userID, domain, port, true, `-HTTPS-${port}`);
 			return domains.flatMap((domain) => {
-				return atob(pt)+'://' + userID + '\u0040' + domain + ':' + port + commonUrlPart_https + urlPart + '-' + domain;
+				return vBaseConfig(userID, domain, port, true, `-HTTPS-${port}-${domain}`);
 			}).concat(vMainHttps);
 		});
 

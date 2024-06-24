@@ -9,9 +9,9 @@ on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
   #  branches: [ "main" ]
-  #  paths-ignore: 
-  #    - '.gitignore'
-  #    - 'package-lock.json'
+    paths-ignore: 
+      - '.gitignore'
+      - '.github/workflows/test.yml'
   #  - 'dist/**'
   #pull_request:
   #  branches: [ "main" ]
@@ -191,3 +191,11 @@ jobs:
         env:
           CF_PAGE_ENV: ${{env.pageBranch == 'main' && 'production' || 'preview'}}
         run: bash ./deploy.sh
+        
+  workflow-keepalive:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: liskin/gh-workflow-keepalive@v1
