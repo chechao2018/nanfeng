@@ -8,17 +8,17 @@ import cfhost from './cfhost.json';
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
 let userID = '90cd4a77-141a-43c9-991b-08263cfe9c11';
 
-//const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn--b6gac.eu.org"]
+// reversed proxy (Non-CF ISP) 
+//const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn--b6gac.eu.org","cdn-all.xn--b6gac.eu.org"]
 // Anycast/cloudflare.com
-const domains = ["fbi.gov","www.okcupid.com","www.gco.gov.qa","www.pcmag.com","www.visa.com.sg","www.sean-now.com","www.iplocation.net","www.wto.org","edtunnel-dgp.pages.dev","www.ipaddress.my","www.gov.ua","ip.sb","gur.gov.ua","www.visa.co.jp","www.visa.com.hk","www.zsu.gov.ua","www.digitalocean.com","japan.com","malaysia.com","russia.com","shopify.com","www.visa.com","www.visa.com.tw","iplocation.io","www.udemy.com","download.yunzhongzhuan.com","www.4chan.org","whatismyipaddress.com"]
+const domains = ["www.okcupid.com","www.pcmag.com","fbi.gov","www.visa.com.sg","www.sean-now.com","www.wto.org","edtunnel-dgp.pages.dev","ip.sb","gur.gov.ua","www.visa.com.hk","www.zsu.gov.ua","www.digitalocean.com","russia.com","www.visa.com","www.visa.com.tw","iplocation.io","www.udemy.com","download.yunzhongzhuan.com","whatismyipaddress.com"]
 
 // if you want to use ipv6 or single proxy, please add comment at this line and remove comment at the next line
 // use single proxy instead of random
-let proxy = 'cdn.xn--b6gac.eu.org';
+//let proxy = 'cdn.xn--b6gac.eu.org';
 // ipv6 proxy example remove comment to use
-let proxy6 = "2a01:4f8:c2c:123f:64:5:6810:c55a"
+//let proxy6 = "2a01:4f8:c2c:123f:64:5:6810:c55a"
 let dohURL = 'https://cloudflare-dns.com/dns-query' // or https://dns.google/dns-query
-//const cfhost = ['cloudflare.com', 'ajax.cloudflare.com', 'community.cloudflare.com', 'cdnjs.cloudflare.com', 'challenges.cloudflare.com', 'time.cloudflare.com', 'performance.radar.cloudflare.com', 'www.cloudflare.com', 'cf-assets.www.cloudflare.com']
 const errorHost = ['26.26.26.2']
 const kvMap = new KVMap({ proxys, cfhost });
 
@@ -37,7 +37,7 @@ export default {
 		// uuid_validator(request);
 		try {
 			userID = env.UUID || userID;
-			proxy = env.PROXY || proxy;
+			//proxy = env.PROXY || proxy;
 			dohURL = env.DOH_URL || dohURL;
 			let userID_Path = userID;
 			if (userID.includes(',')) {
@@ -733,7 +733,7 @@ function getVConfig(userIDs, hostName) {
 	// Prepare output string for each userID
 	const output = userIDArray.map((userID) => {
 		const vMain = atob(pt)+'://' + userID + '\u0040' + hostName + commonUrlPart;
-		const vSec = atob(pt)+'://' + userID + '\u0040' + proxy + commonUrlPart;
+		const vSec = atob(pt)+'://' + userID + '\u0040' + domains[0] + commonUrlPart;
 		return `<h2>UUID: ${userID}</h2>${hashSeparator}\nv2ray default ip
 ---------------------------------------------------------------
 ${vMain}
@@ -751,11 +751,11 @@ ${vSec}
 	// Prepare header string
 	const header = `
 <p align='center'><img src='https://cloudflare-ipfs.com/ipfs/bafybeigd6i5aavwpr6wvnwuyayklq3omonggta4x2q7kpmgafj357nkcky' alt='图片描述' style='margin-bottom: -50px;'>
-<b style='font-size: 15px;'>Welcome! This function generates configuration for V protocol. If you found this useful, please check our GitHub project for more:</b>
-<b style='font-size: 15px;'>欢迎！这是生成 V 协议的配置。如果您发现这个项目很好用，请查看我们的 GitHub 项目给我一个star：</b>
+<b style='font-size: 15px;'>Welcome! This function generates configuration for VLESS protocol. If you found this useful, please check our GitHub project for more:</b>
+<b style='font-size: 15px;'>欢迎！这是生成 VLESS 协议的配置。如果您发现这个项目很好用，请查看我们的 GitHub 项目给我一个star：</b>
 <a href='https://github.com/3Kmfi6HP/EDtunnel' target='_blank'>EDtunnel - https://github.com/3Kmfi6HP/EDtunnel</a>
 <iframe src='https://ghbtns.com/github-btn.html?user=USERNAME&repo=REPOSITORY&type=star&count=true&size=large' frameborder='0' scrolling='0' width='170' height='30' title='GitHub'></iframe>
-<a href='//${hostName}/sub/${userIDArray[0]}' target='_blank'>V 节点订阅连接</a>
+<a href='//${hostName}/sub/${userIDArray[0]}' target='_blank'>VLESS 节点订阅连接</a>
 <a href='clash://install-config?url=${encodeURIComponent(`https://${hostName}/sub/${userIDArray[0]}?format=clash`)}}' target='_blank'>Clash for Windows 节点订阅连接</a>
 <a href='${clash_link}' target='_blank'>Clash 节点订阅连接</a>
 <a href='${subbestip}' target='_blank'>优选IP自动节点订阅</a>
@@ -767,18 +767,18 @@ ${vSec}
 	// HTML Head with CSS and FontAwesome library
 	const htmlHead = `
   <head>
-	<title>EDtunnel: V configuration</title>
-	<meta name='description' content='This is a tool for generating V protocol configurations. Give us a star on GitHub https://github.com/3Kmfi6HP/EDtunnel if you found it useful!'>
+	<title>EDtunnel: VLESS configuration</title>
+	<meta name='description' content='This is a tool for generating Vless protocol configurations. Give us a star on GitHub https://github.com/3Kmfi6HP/EDtunnel if you found it useful!'>
 	<meta name='keywords' content='EDtunnel, cloudflare pages, cloudflare worker, severless'>
 	<meta name='viewport' content='width=device-width, initial-scale=1'>
-	<meta property='og:site_name' content='EDtunnel: V configuration' />
+	<meta property='og:site_name' content='EDtunnel: VLESS configuration' />
 	<meta property='og:type' content='website' />
-	<meta property='og:title' content='EDtunnel - V configuration and subscribe output' />
+	<meta property='og:title' content='EDtunnel - VLESS configuration and subscribe output' />
 	<meta property='og:description' content='Use cloudflare pages and worker severless to implement v protocol' />
 	<meta property='og:url' content='https://${hostName}/' />
 	<meta property='og:image' content='https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(atob(pt)+`://${userIDs.split(",")[0]}\u0040${hostName}${commonUrlPart}`)}' />
 	<meta name='twitter:card' content='summary_large_image' />
-	<meta name='twitter:title' content='EDtunnel - V configuration and subscribe output' />
+	<meta name='twitter:title' content='EDtunnel - VLESS configuration and subscribe output' />
 	<meta name='twitter:description' content='Use cloudflare pages and worker severless to implement v protocol' />
 	<meta name='twitter:url' content='https://${hostName}/' />
 	<meta name='twitter:image' content='https://cloudflare-ipfs.com/ipfs/bafybeigd6i5aavwpr6wvnwuyayklq3omonggta4x2q7kpmgafj357nkcky' />
@@ -868,17 +868,17 @@ function createVSub(userID_Path, hostName) {
 			: Array.from(portSet_http).flatMap((port) => {
 				const urlPart = `${hostName}-HTTP-${port}`;
 				const vMainHttp = hostName.includes('workers.dev')? []
-					: atob(pt)+'://' + userID + '@' + hostName + ':' + port + commonUrlPart_http + urlPart;
+					: atob(pt)+'://' + userID + '\u0040' + hostName + ':' + port + commonUrlPart_http + urlPart;
 				return domains.flatMap((domain) => {
-					return atob(pt)+'://' + userID + '@' + domain + ':' + port + commonUrlPart_http + urlPart + '-' + domain;
+					return atob(pt)+'://' + userID + '\u0040' + domain + ':' + port + commonUrlPart_http + urlPart + '-' + domain;
 				}).concat(vMainHttp);
 			});
 		const httpsConfigurations = Array.from(portSet_https).flatMap((port) => {
 			const urlPart = `${hostName}-HTTPS-${port}`;
 			const vMainHttps = hostName.includes('workers.dev')? [] 
-				: atob(pt)+'://' + userID + '@' + hostName + ':' + port + commonUrlPart_https + urlPart;
+				: atob(pt)+'://' + userID + '\u0040' + hostName + ':' + port + commonUrlPart_https + urlPart;
 			return domains.flatMap((domain) => {
-				return atob(pt)+'://' + userID + '@' + domain + ':' + port + commonUrlPart_https + urlPart + '-' + domain;
+				return atob(pt)+'://' + userID + '\u0040' + domain + ':' + port + commonUrlPart_https + urlPart + '-' + domain;
 			}).concat(vMainHttps);
 		});
 
