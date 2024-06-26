@@ -11,7 +11,7 @@ let userID = '90cd4a77-141a-43c9-991b-08263cfe9c11';
 // reversed proxy (Non-CF ISP) 
 //const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn--b6gac.eu.org","cdn-all.xn--b6gac.eu.org"]
 // Anycast/cloudflare.com
-const domains = ["www.okcupid.com","www.pcmag.com","fbi.gov","www.visa.com.sg","www.sean-now.com","www.wto.org","edtunnel-dgp.pages.dev","ip.sb","gur.gov.ua","www.visa.com.hk","www.zsu.gov.ua","www.digitalocean.com","russia.com","www.visa.com","www.visa.com.tw","iplocation.io","www.udemy.com","download.yunzhongzhuan.com","whatismyipaddress.com"]
+const domains = ["www.okcupid.com","www.pcmag.com","fbi.gov","www.visa.com.sg","www.sean-now.com","www.wto.org","edtunnel-dgp.pages.dev","ip.sb","www.digitalocean.com","russia.com","www.visa.com","www.visa.com.tw","iplocation.io","www.udemy.com","download.yunzhongzhuan.com","whatismyipaddress.com"]
 
 // if you want to use ipv6 or single proxy, please add comment at this line and remove comment at the next line
 // use single proxy instead of random
@@ -48,7 +48,7 @@ export default {
 				kvMap.loadCfhost();
 				kvMap.loadProxys();
 			}
-			console.log(`fetch() ${kvMap.proxys[443].length}(443) ${kvMap.proxys[80].length}(80) ${kvMap.proxys['openai'].length}(openai), ${kvMap.cfhost.size}`)
+			//console.log(`fetch() ${kvMap.proxys[443].length}(443) ${kvMap.proxys[80].length}(80) ${kvMap.proxys['openai'].length}(openai), ${kvMap.cfhost.size}`);
 			const upgradeHeader = request.headers.get('Upgrade');
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
 				const url = new URL(request.url);
@@ -64,7 +64,7 @@ export default {
 					case `/${userID_Path}`: {
 						const host = request.headers.get('Host')
 						if (/curl|wget/.test(request.headers.get('User-Agent'))) {
-							return new Response(vBaseConfig(userID, host, 443, true), {
+							return new Response(vBaseConfig(userID, hostName, 443, host, true), {
 								status: 200,
 								headers: { "Content-Type": "text/plain;charset=utf-8" }
 							})
@@ -128,6 +128,7 @@ export default {
 			}
 		} catch (err) {
 			/** @type {Error} */ let e = err;
+			console.error(err);
 			return new Response(e.toString());
 		}
 	}
@@ -724,9 +725,9 @@ async function handleUDPOutBound(webSocket, vResponseHeader, log) {
 const at = 'QA==';
 const pt = 'dmxlc3M=';
 const ed = 'RUR0dW5uZWw=';
-function vBaseConfig(uuid, host, port, tls=false, remark='') {
+function vBaseConfig(uuid, address, port, host, tls=false, remark='') {
 	const tlsParam = tls ? `security=tls&sni=${host}`: 'security=none'
-	return `${atob(pt)}://${uuid}\u0040${host}:${port}?${tlsParam}&encryption=none&fp=randomized&type=ws&host=${host}&path=%2F%3Fed%3D2048#${host}${remark}`;
+	return `${atob(pt)}://${uuid}\u0040${address}:${port}?${tlsParam}&encryption=none&fp=randomized&type=ws&host=${host}&path=%2F%3Fed%3D2048#${address}${remark}`;
 }
 /**
  *
@@ -742,8 +743,8 @@ function getVConfig(userIDs, hostName) {
 
 	// Prepare output string for each userID
 	const output = userIDArray.map((userID) => {
-		const vMain = vBaseConfig(userID, hostName, 443, true);
-		const vSec = vBaseConfig(domains[0], 443, true);
+		const vMain = vBaseConfig(userID, hostName, 443, hostName, true);
+		const vSec = vBaseConfig(userID, domains[0], 443, hostName, true);
 		return `<h2>UUID: ${userID}</h2>${hashSeparator}\nv2ray default ip
 ---------------------------------------------------------------
 ${vMain}
@@ -786,7 +787,7 @@ ${vSec}
 	<meta property='og:title' content='EDtunnel - VLESS configuration and subscribe output' />
 	<meta property='og:description' content='Use cloudflare pages and worker severless to implement v protocol' />
 	<meta property='og:url' content='https://${hostName}/' />
-	<meta property='og:image' content='https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(vBaseConfig(userIDs.split(",")[0], hostName, 443, true))}' />
+	<meta property='og:image' content='https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(vBaseConfig(userIDs.split(",")[0], hostName, 443, hostName, true))}' />
 	<meta name='twitter:card' content='summary_large_image' />
 	<meta name='twitter:title' content='EDtunnel - VLESS configuration and subscribe output' />
 	<meta name='twitter:description' content='Use cloudflare pages and worker severless to implement v protocol' />
@@ -872,19 +873,18 @@ function createVSub(userID_Path, hostName) {
 	const userIDArray = userID_Path.includes(',') ? userID_Path.split(',') : [userID_Path];
 
 	const output = userIDArray.flatMap((userID) => {
-		const httpConfigurations = hostName.includes('pages.dev')? [] 
+		const httpConfigurations = !hostName.includes('workers.dev')? [] 
 			: Array.from(portSet_http).flatMap((port) => {
-				const vMainHttp = hostName.includes('workers.dev')? []
-					: vBaseConfig(userID, hostName, port, false, `-HTTP-${port}`);
-				return domains.flatMap((domain) => {
-					return vBaseConfig(userID, domain, port, false, `-HTTP-${port}-${domain}`);
-				}).concat(vMainHttp);
-			});
+					const vMainHttp = vBaseConfig(userID, hostName, port, hostName, false, `-HTTP-${port}`);
+					return domains.flatMap((domain) => {
+						return vBaseConfig(userID, domain, port, hostName, false, `-HTTP-${port}-${domain}`);
+					}).concat(vMainHttp);
+				});
 		const httpsConfigurations = Array.from(portSet_https).flatMap((port) => {
 			const vMainHttps = hostName.includes('workers.dev')? [] 
-				: vBaseConfig(userID, domain, port, true, `-HTTPS-${port}`);
+				: vBaseConfig(userID, hostName, port, hostName, true, `-HTTPS-${port}`);
 			return domains.flatMap((domain) => {
-				return vBaseConfig(userID, domain, port, true, `-HTTPS-${port}-${domain}`);
+				return vBaseConfig(userID, domain, port, hostName, true, `-HTTPS-${port}-${domain}`);
 			}).concat(vMainHttps);
 		});
 
