@@ -64,7 +64,7 @@ export default {
 					case `/${userID_Path}`: {
 						const host = request.headers.get('Host')
 						if (/curl|wget/.test(request.headers.get('User-Agent'))) {
-							return new Response(vBaseConfig(userID, hostName, 443, host, true), {
+							return new Response(vBaseConfig(userID, host, 443, host, true), {
 								status: 200,
 								headers: { "Content-Type": "text/plain;charset=utf-8" }
 							})
