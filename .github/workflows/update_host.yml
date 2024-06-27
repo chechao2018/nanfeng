@@ -20,17 +20,17 @@ on:
   workflow_dispatch:
     inputs:
       CF_WORKER_NAME:
-        description: 'worker script name for deployment (default take repo variable `CF_WORKER_NAME`)'
+        description: "worker script name for deployment (default take repo variable 'CF_WORKER_NAME')"
         required: false
         default: ''
         type: 'string'
       CF_PAGE_NAME:
-        description: 'page project name for deployment (default take repo variable `CF_PAGE_NAME`)'
+        description: "page project name for deployment (default take repo variable 'CF_PAGE_NAME')"
         required: false
         default: ''
         type: 'string'
       CF_PAGE_BRANCH:
-        description: 'page branch for deployment environment, empty or `main` for production env, otherwise for preview (default take repo variable `CF_PAGE_BRANCH`)'
+        description: "page branch for deployment environment, empty or 'main' for production env, otherwise for preview (default take repo variable 'CF_PAGE_BRANCH')"
         required: false
         default: ''
         type: 'string'
@@ -42,6 +42,10 @@ on:
         options:
           - true
           - false
+      proxys: 
+        description: 'proxys json data'
+        required: false
+        type: 'string'
         
   workflow_call:
     inputs:
