@@ -124,18 +124,23 @@ deploy_page(){
 		post_handle "$ret" 'patch_page' || exit 1
 	fi
 	ret=`upload_page`
-	post_handle "$ret" 'upload_page' || exit 1
+	post_handle "$ret" 'upload_page' 
+	if [ $? != 0 ]; then
+		sleep 1
+		ret=`upload_page`
+		post_handle "$ret" 'upload_page'
+	fi
 }
 
 [ -z "$workerName" ] && echo 'empty CF_WORKER_NAME'
 for n in `echo "$workerName" | tr -s ' ' '\n'|head -n 10`; do
 	workerName=$n
-	[[ "$n" =~ $NAME_PAT ]] && deploy_worker || echo "invalid worker name: $n"
+	[[ "$n" =~ $NAME_PAT ]] && deploy_worker && sleep 1 || echo "invalid worker name: $n"
 done
 
 [ "$deployPage" = false ] && echo 'no deploy page' && exit
 [ -z "$pageName" ] && echo 'empty CF_PAGE_NAME' && exit
 for n in `echo "$pageName" | tr -s ' ' '\n'|head -n 20`; do
 	pageName=$n
-	[[ "$n" =~ $NAME_PAT ]] && deploy_page || echo "invalid page name: $n"
+	[[ "$n" =~ $NAME_PAT ]] && deploy_page && sleep 1 || echo "invalid page name: $n"
 done
