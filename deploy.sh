@@ -74,7 +74,7 @@ warn_no_uuid(){
 
 deploy_worker(){
 	#[ -z $workerName ] && echo "CF_WORKER_NAME is required!" && return;
-	echo "deploy worker.." >> $GITHUB_STEP_SUMMARY
+	echo "deploy worker $workerName..." >> $GITHUB_STEP_SUMMARY
 
 	if [ ! -z $CF_WORKER_UUID ]; then
 		bindings=`generate_bindings $CF_WORKER_UUID`
@@ -99,7 +99,7 @@ deploy_worker(){
 deploy_page(){
 	[ ! $deployPage ] && exit;
 	[ -z $pageName ] && echo "CF_PAGE_NAME is required!" && exit 1;
-	echo "deploy page.." >> $GITHUB_STEP_SUMMARY
+	echo "deploy page $pageName..." >> $GITHUB_STEP_SUMMARY
 	
 	ret=`page_deployment`
 	if [ "$ret" == null ]; then
@@ -127,15 +127,15 @@ deploy_page(){
 	post_handle "$ret" 'upload_page' || exit 1
 }
 
-[ -z $workerName ] && echo 'empty CF_WORKER_NAME'
+[ -z "$workerName" ] && echo 'empty CF_WORKER_NAME'
 for n in `echo "$workerName" | tr -s ' ' '\n'|head -n 10`; do
 	workerName=$n
-	[ $n =~ $NAME_PAT ] && deploy_worker || echo "invalid worker name: $n"
+	[ "$n" =~ "$NAME_PAT" ] && deploy_worker || echo "invalid worker name: $n"
 done
 
 [ "$deployPage" = false ] && echo 'no deploy page' && exit
-[ -z $pageName ] && echo 'empty CF_PAGE_NAME' && exit
+[ -z "$pageName" ] && echo 'empty CF_PAGE_NAME' && exit
 for n in `echo "$pageName" | tr -s ' ' '\n'|head -n 20`; do
 	pageName=$n
-	[ $n =~ $NAME_PAT ] && deploy_page || echo "invalid page name: $n"
+	[ "$n" =~ "$NAME_PAT" ] && deploy_page || echo "invalid page name: $n"
 done
