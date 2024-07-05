@@ -1,6 +1,7 @@
 #!/bin/bash
 
 #-----------------------------------------------
+NAME_PAT='^[0-9a-zA-Z]+$'
 AUTH="Authorization:Bearer $CF_API_TOKEN"
 TYPE_FORMDATA="Content-Type:multipart/form-data"
 TYPE_JSON="Content-Type:application/json"
@@ -125,6 +126,13 @@ deploy_page(){
 	ret=`upload_page`
 	post_handle "$ret" 'upload_page' || exit 1
 }
-[ ! -z $workerName ] && deploy_worker || echo 'empty CF_WORKER_NAME'
+
+[ -z $workerName ] && echo 'empty CF_WORKER_NAME'
+[ $workerName =~ $NAME_PAT ] && deploy_worker || echo "invalid worker name: $workerName"
+
 [ "$deployPage" = false ] && echo 'no deploy page' && exit
-[ ! -z $pageName ] && deploy_page || echo 'empty CF_PAGE_NAME'
+[ -z $pageName ] && echo 'empty CF_PAGE_NAME' && exit
+for p in $pageName; do
+	pageName=$p
+	[ $pageName =~ $NAME_PAT ] && deploy_page || echo "invalid page name: $p"
+done

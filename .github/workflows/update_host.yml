@@ -8,10 +8,10 @@ on:
     - cron: "0 * * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-  #  branches: [ "main" ]
-    paths-ignore: 
-      - '.gitignore'
-      - '.github/workflows/test.yml'
+    #  branches: [ "main" ]
+    paths-ignore:
+      - ".gitignore"
+      - ".github/workflows/test.yml"
   #  - 'dist/**'
   #pull_request:
   #  branches: [ "main" ]
@@ -22,37 +22,37 @@ on:
       CF_WORKER_NAME:
         description: "worker script name for deployment (default take repo variable 'CF_WORKER_NAME')"
         required: false
-        default: ''
-        type: 'string'
+        default: ""
+        type: "string"
       CF_PAGE_NAME:
         description: "page project name for deployment (default take repo variable 'CF_PAGE_NAME')"
         required: false
-        default: ''
-        type: 'string'
+        default: ""
+        type: "string"
       CF_PAGE_BRANCH:
         description: "page branch for deployment environment, empty or 'main' for production env, otherwise for preview (default take repo variable 'CF_PAGE_BRANCH')"
         required: false
-        default: ''
-        type: 'string'
+        default: ""
+        type: "string"
       deployPage:
-        description: 'deploy worker and page (true: worker and page, false: worker)'
+        description: "deploy worker and page (true: worker and page, false: worker)"
         required: false
         default: true
         type: choice
         options:
           - true
           - false
-      proxys: 
-        description: 'proxys json data'
+      proxys:
+        description: "proxys json data"
         required: false
-        type: 'string'
-        
+        type: "string"
+
   workflow_call:
     inputs:
-      proxys: 
-        description: 'proxys json data'
+      proxys:
+        description: "proxys json data"
         required: true
-        type: 'string'
+        type: "string"
     secrets:
       CF_ACCOUNT_ID:
         required: true
@@ -68,10 +68,10 @@ on:
 env:
   deployPage: ${{inputs.deployPage != 'false'}}
   workerName: ${{inputs.CF_WORKER_NAME || vars.CF_WORKER_NAME}}
-  pageName:   ${{inputs.CF_PAGE_NAME || vars.CF_PAGE_NAME}}
+  pageName: ${{inputs.CF_PAGE_NAME || vars.CF_PAGE_NAME}}
   pageBranch: ${{inputs.CF_PAGE_BRANCH || vars.CF_PAGE_BRANCH || 'main'}}
   EVENT_NAME: ${{github.event_name}}
-  
+
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
   CF_SERVICE_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/services
   CF_PROJECT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/pages/projects
@@ -80,7 +80,7 @@ env:
   CF_NAMESPACE_ID: ${{secrets.CF_NAMESPACE_ID || vars.CF_NAMESPACE_ID}}
   CF_WORKER_UUID: ${{secrets.CF_WORKER_UUID}}
   CF_PAGE_UUID: ${{secrets.CF_PAGE_UUID}}
-  
+
   CFHOST: cfhost
   CFHOST_BAK: cfhost_bak
   CFHOST_JSON: cfhost.json
@@ -101,10 +101,10 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
-        with: 
+        with:
           # https://github.com/orgs/community/discussions/25797#discussioncomment-3249294
           fetch-depth: 0
-          
+
       - id: get-data
         name: get cfhost, merge, backup
         run: |
@@ -131,13 +131,10 @@ jobs:
               echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > $3
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                   -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
-              
-              #curl -H "Authorization:Bearer $CF_API_TOKEN" $CF_SCRIPT_API/$workerName/content/v2 > s.js
-              #local old=`grep -A 1 $3 s.js|grep -v $3|tr -d ' =;'|sed -r 's/^\w+//'`
             fi
           }
           merge_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
-          
+
       - id: check-change
         name: check change of cfhost.json, proxys update time
         env:
@@ -168,7 +165,7 @@ jobs:
               gh run watch ${{ github.run_id }}
             #fi
           fi
-          
+
       - id: get-proxys
         name: get proxys data
         # if: ${{ github.event_name == 'workflow_call' }}
@@ -179,23 +176,23 @@ jobs:
             ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$PROXYS"`
             grep error <<< "$ret" && echo "$ret" || echo "$ret" > $PROXYS_JSON
           fi
-          
+
       - name: setup node
         if: steps.get-proxys.conclusion == 'success'
         uses: actions/setup-node@v3
         with:
           node-version: 20
-          
+
       - name: build worker
         run: |
           npm i
           npm run esbuild
-          
+
       - name: deploy worker, page
         env:
           CF_PAGE_ENV: ${{env.pageBranch == 'main' && 'production' || 'preview'}}
         run: bash ./deploy.sh
-        
+
   workflow-keepalive:
     if: ${{ github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
