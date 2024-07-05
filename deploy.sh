@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #-----------------------------------------------
-NAME_PAT='^[0-9a-zA-Z]+$'
+NAME_PAT='^[0-9a-zA-Z\-]+$'
 AUTH="Authorization:Bearer $CF_API_TOKEN"
 TYPE_FORMDATA="Content-Type:multipart/form-data"
 TYPE_JSON="Content-Type:application/json"
