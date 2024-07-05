@@ -130,12 +130,12 @@ deploy_page(){
 [ -z "$workerName" ] && echo 'empty CF_WORKER_NAME'
 for n in `echo "$workerName" | tr -s ' ' '\n'|head -n 10`; do
 	workerName=$n
-	[ "$n" =~ "$NAME_PAT" ] && deploy_worker || echo "invalid worker name: $n"
+	[ "$n" =~ $NAME_PAT ] && deploy_worker || echo "invalid worker name: $n"
 done
 
 [ "$deployPage" = false ] && echo 'no deploy page' && exit
 [ -z "$pageName" ] && echo 'empty CF_PAGE_NAME' && exit
 for n in `echo "$pageName" | tr -s ' ' '\n'|head -n 20`; do
 	pageName=$n
-	[ "$n" =~ "$NAME_PAT" ] && deploy_page || echo "invalid page name: $n"
+	[ "$n" =~ $NAME_PAT ] && deploy_page || echo "invalid page name: $n"
 done
