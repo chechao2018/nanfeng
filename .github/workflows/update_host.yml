@@ -87,7 +87,7 @@ env:
   PROXYS: proxys
   PROXYS_UPDATED: proxys_updated
   PROXYS_JSON: src/proxys.json
-  ENTRY: src/_worker.js
+  ENTRY: dist/_worker.js
   UUID: UUID
   KV: KV
 
@@ -105,8 +105,8 @@ jobs:
           # https://github.com/orgs/community/discussions/25797#discussioncomment-3249294
           fetch-depth: 0
 
-      - id: get-data
-        name: get cfhost, merge, backup
+      - id: check-cfhost
+        name: check cfhost, merge, backup
         run: |
           [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z $CF_API_TOKEN ] || [ -z $CF_NAMESPACE_ID ] && echo "secrets and CF_NAMESPACE_ID required!" && exit 1;
 
@@ -125,7 +125,7 @@ jobs:
             fi
           }
 
-          merge_backup(){
+          check_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
             if echo "$ret"|grep error; then
               grep 'namespace not found' <<< "$ret" && exit 1 || echo "$ret"
@@ -145,9 +145,14 @@ jobs:
               diff -b -y --suppress-common-lines bak.txt orig.txt | grep '<' | sed 's/< *//' > tmp
               mv tmp bak.txt
               wc -l bak.txt >> $GITHUB_STEP_SUMMARY
-              
+              wc -l orig.txt >> $GITHUB_STEP_SUMMARY
+
               filterhost bak.txt
               filterhost orig.txt
+              
+              echo 'after filtering ...' >> $GITHUB_STEP_SUMMARY
+              wc -l bak.txt >> $GITHUB_STEP_SUMMARY
+              wc -l orig.txt >> $GITHUB_STEP_SUMMARY
 
               echo [$(echo `cat bak.txt orig.txt`|tr -s ' ' ',')] > $3
               bak=[$(echo `cat bak.txt`|tr -s ' ' ',')]
@@ -155,7 +160,7 @@ jobs:
                   -d "$bak" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
             fi
           }
-          merge_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
+          check_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
 
       - id: check-change
         name: check change of cfhost.json, proxys update time

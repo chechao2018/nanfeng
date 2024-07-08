@@ -5,7 +5,7 @@ NAME_PAT='^[0-9a-zA-Z\-]+$'
 AUTH="Authorization:Bearer $CF_API_TOKEN"
 TYPE_FORMDATA="Content-Type:multipart/form-data"
 TYPE_JSON="Content-Type:application/json"
-FORM_FILE="$ENTRY=@dist/$ENTRY;type=application/javascript+module"
+FORM_FILE="$ENTRY=@$ENTRY;type=application/javascript+module"
 MAIN_MODULE='"main_module":"'$ENTRY'"'
 PLACEMENT='"placement":{"mode":"smart"}'
 COMPATIBILITY_DATE='"compatibility_date":"2024-06-20"'
