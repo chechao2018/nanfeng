@@ -117,8 +117,12 @@ jobs:
               ip=$(dig +short @1.1.1.1 $d | grep -v '\.$' | head -n1)
               [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
             done
-            [ -f src/cfcidr.js ] && mv src/cfcidr.js src/cfcidr.mjs
-            node ./.github/filterhost.mjs tocheck.txt > $1
+            if [ -s tocheck.txt ]; then
+              [ -f src/cfcidr.js ] && mv src/cfcidr.js src/cfcidr.mjs
+              node ./.github/filterhost.mjs tocheck.txt > $1
+            else
+              echo > $1
+            fi
           }
 
           merge_backup(){
@@ -140,7 +144,8 @@ jobs:
               echo `cat $3`|tr -d '[]'|sed -r 's/, */\n/g' > orig.txt
               diff -b -y --suppress-common-lines bak.txt orig.txt | grep '<' | sed 's/< *//' > tmp
               mv tmp bak.txt
-
+              wc -l bak.txt >> $GITHUB_STEP_SUMMARY
+              
               filterhost bak.txt
               filterhost orig.txt
 
