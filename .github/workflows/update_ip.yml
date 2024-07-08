@@ -39,7 +39,7 @@ env:
   PROXYS: proxys
   PROXYS_BAK: proxys_bak
   PROXYS_UPDATED: proxys_updated
-  PROXYS_JSON: proxys.json
+  PROXYS_JSON: src/proxys.json
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:

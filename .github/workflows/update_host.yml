@@ -83,11 +83,11 @@ env:
 
   CFHOST: cfhost
   CFHOST_BAK: cfhost_bak
-  CFHOST_JSON: cfhost.json
+  CFHOST_JSON: src/cfhost.json
   PROXYS: proxys
   PROXYS_UPDATED: proxys_updated
-  PROXYS_JSON: proxys.json
-  ENTRY: _worker.js
+  PROXYS_JSON: src/proxys.json
+  ENTRY: src/_worker.js
   UUID: UUID
   KV: KV
 
@@ -118,7 +118,7 @@ jobs:
               [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
             done
             [ -f src/cfcidr.js ] && mv src/cfcidr.js src/cfcidr.mjs
-            node ./github/filterhost.mjs tocheck.txt > $1
+            node ./.github/filterhost.mjs tocheck.txt > $1
           }
 
           merge_backup(){

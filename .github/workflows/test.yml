@@ -87,7 +87,7 @@ jobs:
           done
           [ ! -f tocheck.txt ] && exit 0
 
-          [ -f src/cfcidr.js ] && mv ./cfcidr.js ./cfcidr.mjs
+          [ -f src/cfcidr.js ] && mv src/cfcidr.js src/cfcidr.mjs
           cat > checkip.mjs <<-EOF
           import fs from 'node:fs';
           import readline from 'node:readline';
