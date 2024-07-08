@@ -218,6 +218,7 @@ jobs:
         run: |
           npm i
           npm run esbuild
+          find . -name _worker.js -type f
 
       - name: deploy worker, page
         env:
