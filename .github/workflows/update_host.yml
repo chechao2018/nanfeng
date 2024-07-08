@@ -120,8 +120,10 @@ jobs:
               [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
             done
             if [ -s tocheck.txt ]; then
-              [ -f src/cfcidr.js ] && mv src/cfcidr.js src/cfcidr.mjs
+              local cidr='src/cfcidr'
+              [ -f $cidr.js ] && mv $cidr.js $cidr.mjs
               node ./.github/filterhost.mjs tocheck.txt > $1
+              [ -f $cidr.mjs ] && mv $cidr.mjs $cidr.js
             else 
               > $1
             fi
