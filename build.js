@@ -64,8 +64,8 @@ var cloudflareInternalPlugin = {
 
 var args = process.argv.slice(2);
 const opt = {
-	entry: '_worker.js',
-	workingDir: '.',
+	entry: 'src/_worker.js',
+	workingDir: 'src',
 	outdir: 'dist',
 	nodeCompat: false,
 }

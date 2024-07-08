@@ -37,7 +37,7 @@ on:
       deployPage:
         description: "deploy worker and page (true: worker and page, false: worker)"
         required: false
-        default: true
+        default: "true"
         type: choice
         options:
           - true
@@ -109,6 +109,18 @@ jobs:
         name: get cfhost, merge, backup
         run: |
           [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z $CF_API_TOKEN ] || [ -z $CF_NAMESPACE_ID ] && echo "secrets and CF_NAMESPACE_ID required!" && exit 1;
+
+          filterhost() {
+            [ ! -f "$1" ] && echo invalid filename: $1 && exit 1
+            [ -f tocheck.txt ] && rm tocheck.txt 2>/dev/null
+            for d in `cat $1|sort -u`; do
+              ip=$(dig +short @1.1.1.1 $d | grep -v '\.$' | head -n1)
+              [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
+            done
+            [ -f src/cfcidr.js ] && mv src/cfcidr.js src/cfcidr.mjs
+            node ./github/filterhost.mjs tocheck.txt > $1
+          }
+
           merge_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
             if echo "$ret"|grep error; then
@@ -117,20 +129,25 @@ jobs:
               echo "get-data $1" >> $GITHUB_STEP_SUMMARY
               #curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
               #  -d "" "$CF_KV_API/$1" >> $GITHUB_STEP_SUMMARY
-              echo $ret|tr -d '[]'|sed -r 's/, ?/\n/g' > tmp.txt
+              echo $ret|tr -d '[]'|sed -r 's/, */\n/g' > bak.txt
               
               local bak=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$2"`
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ "$bak" != "[]" ]; then
-                echo $bak|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
-                ret=[$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')]
+                echo $bak|tr -d '[]'|sed -r 's/, */\n/g' >> bak.txt
                 [ "$ret" = "$bak" ] && echo "cfhostChanged=false" >> $GITHUB_ENV;
               fi
               
-              echo `cat $3`|tr -d '[]'|sed -r 's/, ?/\n/g' >> tmp.txt
-              # cat tmp.txt|sed -r 's/^\s*(.*)/\1/g'
-              echo [$(echo `cat tmp.txt|sort -u`|tr -s ' ' ',')] > $3
+              echo `cat $3`|tr -d '[]'|sed -r 's/, */\n/g' > orig.txt
+              diff -b -y --suppress-common-lines bak.txt orig.txt | grep '<' | sed 's/< *//' > tmp
+              mv tmp bak.txt
+
+              filterhost bak.txt
+              filterhost orig.txt
+
+              echo [$(echo `cat bak.txt orig.txt`|tr -s ' ' ',')] > $3
+              bak=[$(echo `cat bak.txt`|tr -s ' ' ',')]
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
-                  -d "$ret" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
+                  -d "$bak" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
             fi
           }
           merge_backup $CFHOST $CFHOST_BAK $CFHOST_JSON

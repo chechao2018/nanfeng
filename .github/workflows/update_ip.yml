@@ -17,9 +17,9 @@ on:
   workflow_dispatch:
     inputs:
       downloadUpdatedIP:
-        description: 'download the daily updated IP data from baipiao.eu.org first before merging the IP data'
+        description: "download the daily updated IP data from baipiao.eu.org first before merging the IP data"
         required: false
-        default: true
+        default: "true"
         type: choice
         options:
           - true
@@ -40,7 +40,6 @@ env:
   PROXYS_BAK: proxys_bak
   PROXYS_UPDATED: proxys_updated
   PROXYS_JSON: proxys.json
-  
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -54,7 +53,7 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
-      
+
       - name: download ip zip file, unzip, merge, uniq
         if: ${{ ! contains(github.event.schedule, '/') && ! contains(github.event.schedule, ',') || inputs.downloadUpdatedIPFirst == 'true' }}
         run: |
@@ -65,7 +64,7 @@ jobs:
           curl -o ip.txt https://ipupdate.baipiao.eu.org
           [ $? -eq 0 ] || echo > ip.txt
           echo ipupdate `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
-          
+
       - name: backup original data, merge
         run: |
           for key in $PROXYS_BAK $PROXYS; do
@@ -73,13 +72,13 @@ jobs:
             if echo "$ret"|grep error; then
               grep 'namespace not found' <<< "$ret" && exit 1 || echo "$ret"
             elif [ ! -z "$ret" ] && ! echo "$ret"|grep '443":\[\]'; then
-              echo "$ret" |tr -d '{"[]}'|sed -r 's/, ?/\n/g'|sed -r '/^\w*:$/d'|sed -r 's/^\w*:([\d\.]*)/\1/' >> ip.txt
+              echo "$ret" |tr -d '{"[]}'|sed -r 's/, */\n/g'|sed -r '/^\w*:$/d'|sed -r 's/^\w*:([\d\.]*)/\1/' >> ip.txt
               if [ $key == $PROXYS ]; then
                 curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" -d "$ret" "$CF_KV_API/$PROXYS_BAK"
               fi
             fi
           done
-          echo `cat $PROXYS_JSON`|tr -d '["]'|sed -r 's/, ?/\n/g' >> ip.txt
+          echo `cat $PROXYS_JSON`|tr -d '["]'|sed -r 's/, */\n/g' >> ip.txt
           cat ip.txt | sort | uniq > tmp.txt
           mv tmp.txt ip.txt
           echo merge `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
@@ -170,7 +169,7 @@ jobs:
                 ;;
             esac
           }
-          
+
           probe_http(){
             [ -z $1 ] && echo 'error: no ip' && return
             local ip=$1 port=$2 p=http
@@ -199,7 +198,7 @@ jobs:
               sed -i '/'$ip'/d' ip$port.txt
             fi
           }
-          
+
           # while IFS= read -r ip; do
             # measure_http $ip 443
           # done < ip.txt
@@ -217,15 +216,17 @@ jobs:
           echo `wc -l ip443.txt`| tee $GITHUB_STEP_SUMMARY
           echo `wc -l ip80.txt` | tee -a $GITHUB_STEP_SUMMARY
           echo `wc -l ipopenai.txt`| tee -a $GITHUB_STEP_SUMMARY
-          
+
       - id: put-data
         name: update valid ip to server
         run: |
           data=
           for i in 443 80 openai; do
+            [ ! -z $data ] && data=$data,
             if [ -s ip$i.txt ]; then
-              [ ! -z $data ] && data=$data,
-              data=$data'"'$i'":'[$(echo `sed -r 's/^(.*)$/"\1"/' ip$i.txt`|tr -s ' ' ',')]
+              data=$data\"$i\":[$(echo `sed -r 's/^(.*)$/"\1"/' ip$i.txt`|tr -s ' ' ',')]
+            else
+              data=$data\"$i\":[]
             fi
           done
           data={$data}
@@ -234,7 +235,7 @@ jobs:
           curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
             -d "`date +%s`" "$CF_KV_API/$PROXYS_UPDATED"
           echo "data=$data" >> $GITHUB_OUTPUT
-          
+
       - name: upload ip file
         uses: actions/upload-artifact@v4
         with:
@@ -243,14 +244,14 @@ jobs:
             ip443.txt
             ip80.txt
             ipopenai.txt
-            
+
   deploy:
     needs: update-ip
     uses: ./.github/workflows/update_host.yml
     with:
       proxys: ${{ needs.update-ip.outputs.data }}
     secrets: inherit
-    
+
   workflow-keepalive:
     if: ${{ github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
