@@ -116,6 +116,7 @@ jobs:
             [ -f tocheck.txt ] && rm tocheck.txt 2>/dev/null
             for d in `cat $1|sort -u`; do
               ip=$(dig +short @1.1.1.1 $d | grep -v '\.$' | head -n1)
+              echo echo $ip $d
               [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
             done
             if [ -s tocheck.txt ]; then
@@ -154,7 +155,8 @@ jobs:
               echo 'after filtering ...' >> $GITHUB_STEP_SUMMARY
               wc -l bak.txt >> $GITHUB_STEP_SUMMARY
               wc -l orig.txt >> $GITHUB_STEP_SUMMARY
-
+              [ ! -s orig.txt ] && echo 'filterhost error!' && exit 1
+              
               echo [$(echo `cat bak.txt orig.txt`|tr -s ' ' ',')] > $3
               bak=[$(echo `cat bak.txt`|tr -s ' ' ',')]
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
