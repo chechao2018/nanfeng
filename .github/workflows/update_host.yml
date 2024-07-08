@@ -6,6 +6,7 @@ name: cfhost Workflow
 on:
   schedule:
     - cron: "0 * * * *"
+    - cron: "30 22 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     #  branches: [ "main" ]
@@ -148,7 +149,7 @@ jobs:
               wc -l orig.txt >> $GITHUB_STEP_SUMMARY
 
               filterhost bak.txt
-              filterhost orig.txt
+              [ '${{ contains(github.event.schedule, '* * * *') }}' = false ] && filterhost orig.txt
               
               echo 'after filtering ...' >> $GITHUB_STEP_SUMMARY
               wc -l bak.txt >> $GITHUB_STEP_SUMMARY
@@ -170,15 +171,14 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if [ "$cfhostChanged" = false ]; then
-            # ! git diff|grep "$CFHOST_JSON";
-            # git config user.name "GitHub Actions Bot"
-            # git config user.email "<>"
-            # git add $CFHOST_JSON
-            # git commit -m "updated cfhost"
-            # git push
+          if [ '${{ contains(github.event.schedule, '* * * *') }}' = false ] && git diff|grep "$CFHOST_JSON"; then
+            git config user.name "GitHub Actions Bot"
+            git config user.email "<>"
+            git add $CFHOST_JSON
+            git commit -m "updated $CFHOST_JSON"
+            git push
+          elif [ "$cfhostChanged" = false ]; then
             echo "cfhost no change" >> $GITHUB_STEP_SUMMARY
-            
             [ ! -z '${{ inputs.proxys }}' ] || [ $EVENT_NAME != schedule ] && exit;
             
             # cancel when trigger on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]
