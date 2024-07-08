@@ -112,11 +112,11 @@ jobs:
           [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z $CF_API_TOKEN ] || [ -z $CF_NAMESPACE_ID ] && echo "secrets and CF_NAMESPACE_ID required!" && exit 1;
 
           filterhost() {
-            [ ! -s "$1" ] && echo no domain in $1 && return
+            [ ! -s "$1" ] && echo file $1 is empty! && return
             [ -f tocheck.txt ] && rm tocheck.txt 2>/dev/null
             for d in `cat $1|sort -u`; do
-              dig +short $d @1.1.1.1
-              ip=$(dig +short $d @1.1.1.1 | grep -v '\.$' | head -n1)
+              #dig +short @1.1.1.1 $d 
+              ip=$(dig +short @1.1.1.1 $d | grep -v '\.$' | head -n1)
               [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
             done
             if [ -s tocheck.txt ]; then
@@ -135,15 +135,15 @@ jobs:
               echo "get-data $1" >> $GITHUB_STEP_SUMMARY
               #curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
               #  -d "" "$CF_KV_API/$1" >> $GITHUB_STEP_SUMMARY
-              echo $ret|tr -d '[]'|sed -r 's/, */\n/g' > bak.txt
+              echo $ret|tr -d '["]'|sed -r 's/, */\n/g' > bak.txt
               
               local bak=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$2"`
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ "$bak" != "[]" ]; then
-                echo $bak|tr -d '[]'|sed -r 's/, */\n/g' >> bak.txt
+                echo $bak|tr -d '["]'|sed -r 's/, */\n/g' >> bak.txt
                 [ "$ret" = "$bak" ] && echo "cfhostChanged=false" >> $GITHUB_ENV;
               fi
               
-              echo `cat $3`|tr -d '[]'|sed -r 's/, */\n/g' > orig.txt
+              echo `cat $3`|tr -d '["]'|sed -r 's/, */\n/g' > orig.txt
               diff -b -y --suppress-common-lines bak.txt orig.txt | grep '<' | sed 's/< *//' > tmp
               mv tmp bak.txt
               wc -l bak.txt >> $GITHUB_STEP_SUMMARY
@@ -157,9 +157,8 @@ jobs:
                 wc -l orig.txt >> $GITHUB_STEP_SUMMARY
                 [ ! -s orig.txt ] && echo 'filterhost error!' && exit 1
               fi
-
-              echo [$(echo `cat bak.txt orig.txt`|tr -s ' ' ',')] > $3
-              bak=[$(echo `cat bak.txt`|tr -s ' ' ',')]
+              echo [$(echo `cat bak.txt orig.txt|sed -r 's/(.*)/"\1"/'`|tr -s ' ' ',')] > $3
+              bak=[$(echo `cat bak.txt`|sed -r 's/(.*)/"\1"/'`|tr -s ' ' ',')]
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                   -d "$bak" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
             fi
