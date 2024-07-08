@@ -158,7 +158,7 @@ jobs:
                 [ ! -s orig.txt ] && echo 'filterhost error!' && exit 1
               fi
               echo [$(echo `cat bak.txt orig.txt|sed -r 's/(.*)/"\1"/'`|tr -s ' ' ',')] > $3
-              bak=[$(echo `cat bak.txt`|sed -r 's/(.*)/"\1"/'`|tr -s ' ' ',')]
+              bak=[$(echo `cat bak.txt|sed -r 's/(.*)/"\1"/'`|tr -s ' ' ',')]
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                   -d "$bak" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
             fi
