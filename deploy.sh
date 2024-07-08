@@ -70,7 +70,7 @@ warn_no_uuid(){
 	echo "Warning: $1 UUID is empty! you can set a repo secret named 'CF_${1}_UUID' or fill in cloudflare dashboard worker settings then try again" | tee -a $GITHUB_STEP_SUMMARY
 }
 
-[ ! -s "dist/$ENTRY" ] && echo "$ENTRY not found!" && exit 1;
+[ ! -s "$ENTRY" ] && echo "$ENTRY not found!" && exit 1;
 
 deploy_worker(){
 	#[ -z $workerName ] && echo "CF_WORKER_NAME is required!" && return;
