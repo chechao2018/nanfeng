@@ -6,7 +6,7 @@ AUTH="Authorization:Bearer $CF_API_TOKEN"
 TYPE_FORMDATA="Content-Type:multipart/form-data"
 TYPE_JSON="Content-Type:application/json"
 FORM_FILE="_worker.js=@$ENTRY;type=application/javascript+module"
-MAIN_MODULE='"main_module":"'$ENTRY'"'
+MAIN_MODULE='"main_module":"_worker.js"'
 PLACEMENT='"placement":{"mode":"smart"}'
 COMPATIBILITY_DATE='"compatibility_date":"2024-06-20"'
 #--------------------------
