@@ -122,10 +122,10 @@ jobs:
             if [ -s tocheck.txt ]; then
               local cidr='src/cfcidr'
               [ -f $cidr.js ] && local js=1 && mv $cidr.js $cidr.mjs
-              node ./.github/filterhost.mjs tocheck.txt > $1
+              node ./.github/filterhost.mjs tocheck.txt
               [ "$js" = 1 ] && mv $cidr.mjs $cidr.js
-            else 
-              > $1
+            #else 
+            #  > $1
             fi
           }
 
@@ -135,7 +135,7 @@ jobs:
           file_lines_tojson(){
             local uniq=0; 
             [ "$1" = '-u' ] && uniq=1 && shift;
-            echo [$(echo `cat $@|if [ "uniq" = 1 ]; then sort -u; else cat; fi|sed -r 's/(.*)/"\1"/'`|tr -s ' ' ',')]
+            echo [$(echo `cat $@|if [ "$uniq" = 1 ]; then sort -u; else cat; fi|sed -r 's/(.*)/"\1"/'`|tr -s ' ' ',')]
           }
 
           check_backup(){
@@ -151,25 +151,27 @@ jobs:
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ "$bak" != "[]" ]; then
                 json_array_tolines $bak >> remote.txt
                 ret=`file_lines_tojson -u remote.txt`
-                [ "$ret" = "$bak" ] && echo "cfhostChanged=false" >> $GITHUB_ENV;
+                [ "$ret" = "$bak" ] && echo "kvCfhostChanged=false" >> $GITHUB_ENV;
                 echo "get kv $2, merge" >> $GITHUB_STEP_SUMMARY
                 wc -l remote.txt >> $GITHUB_STEP_SUMMARY
               fi
               
               json_array_tolines $3 > local.txt
               wc -l local.txt >> $GITHUB_STEP_SUMMARY
-              diff -b --suppress-common-lines remote.txt local.txt | grep '<' | sed 's/< *//' > tmp
-              mv tmp remote.txt
+              #diff -b --suppress-common-lines remote.txt local.txt | grep '<' | sed 's/< *//' > remote.txt
+              comm -23 <(sort remote.txt) <(sort local.txt) > remote.txt
               echo "after diff local" >> $GITHUB_STEP_SUMMARY
               wc -l remote.txt >> $GITHUB_STEP_SUMMARY
               
               echo 'filtering ...' >> $GITHUB_STEP_SUMMARY
-              filterhost remote.txt
+              filterhost remote.txt > remote.txt
               wc -l remote.txt >> $GITHUB_STEP_SUMMARY
               if [ '${{ contains(github.event.schedule, '* * * *') }}' = false ]; then
-                filterhost local.txt
+                filterhost local.txt > tmp
+                [ ! -s tmp ] && echo 'maybe filterhost error!' && exit 1
+                [ `comm -23 <(sort local.txt) <(sort tmp)|wc -l` != 0 ] && echo "cfhostjsonChanged=true" >> $GITHUB_ENV;
+                mv tmp local.txt
                 wc -l local.txt >> $GITHUB_STEP_SUMMARY
-                [ ! -s local.txt ] && echo 'filterhost error!' && exit 1
               fi
 
               file_lines_tojson -u remote.txt local.txt > $3
@@ -188,15 +190,16 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if [ '${{ contains(github.event.schedule, '* * * *') }}' = false ] && git diff|grep "$CFHOST_JSON"; then
+          if [ "$cfhostjsonChanged" = true ]; then
             git config user.name "GitHub Actions Bot"
             git config user.email "<>"
             git add $CFHOST_JSON
             git commit -m "updated $CFHOST_JSON"
             git push
             echo "$CFHOST_JSON changed" >> $GITHUB_STEP_SUMMARY
-          elif [ "$cfhostChanged" = false ]; then
-            echo "cfhost no change" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$kvCfhostChanged" = false ]; then
+            echo "kv cfhost no change" >> $GITHUB_STEP_SUMMARY
             [ ! -z '${{ inputs.proxys }}' ] || [ $EVENT_NAME != schedule ] && exit;
             
             # cancel when trigger on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]
