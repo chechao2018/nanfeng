@@ -168,7 +168,7 @@ jobs:
               
               if [ -s remote.txt ]; then
                 echo 'filter remote.txt' >> $GITHUB_STEP_SUMMARY
-                filterhost remote.txt > remote.txt
+                filterhost remote.txt > tmp && mv tmp remote.txt
                 wc -l remote.txt >> $GITHUB_STEP_SUMMARY
               fi
               if [ '${{ contains(github.event.schedule, '* * * *') }}' = false ]; then
