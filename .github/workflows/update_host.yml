@@ -142,6 +142,7 @@ jobs:
 
           check_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
+            echo ret="$ret"
             if echo "$ret"|grep error; then
               grep 'namespace not found' <<< "$ret" && exit 1 || echo "$ret"
             elif [ ! -z "$ret" ] && [ "$ret" != "[]" ]; then
