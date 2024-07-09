@@ -41,6 +41,23 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
 
+      - name: comm test
+        run: |
+          comm --help
+          echo -ne 'c.com\na.com\nb.com\n' > l.txt
+          echo -ne 'd.com\nc.com\n' > r.txt
+          echo ----l.txt----
+          cat l.txt
+          echo ----r.txt----
+          cat r.txt
+          echo ----comm----
+          comm -23 <(sort l.txt) <(sort r.txt)
+          echo '----comm >----'
+          comm -23 <(sort l.txt) <(sort r.txt) > t.txt
+          mv t.txt l.txt
+          echo ----l.txt----
+          cat l.txt
+
       - name: inputs json test
         if: ${{inputs.json != ''}}
         run: |
