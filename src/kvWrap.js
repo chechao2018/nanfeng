@@ -1,10 +1,10 @@
 const kvWrap = {
   KV: null,
-  async get(key) {
-    return this.api("get", key);
+  async get(key, option = { type: "json" }) {
+    return this.api("get", key, option);
   },
-  async list(key) {
-    return this.api("get", key);
+  async list(...args) {
+    return this.api("list", ...args);
   },
   async delete(key) {
     return this.api("get", key);
@@ -21,9 +21,7 @@ const kvWrap = {
   // key, push, arg0, arg1, ...
   // key, set, subKey, subValue
   async pushOrSet(key, ...args) {
-    if (!this.KV) {
-      return console.error("no KV instance!");
-    }
+    if (!this.KV) return console.error("no KV instance!");
     val = await this.api("get", key);
     if (val) {
       if (val instanceof Array) {
@@ -40,19 +38,16 @@ const kvWrap = {
    * args: key, value(string,object,array)
    */
   async api(op, ...args) {
-    if (!this.KV) {
-      return console.error("no KV instance!");
-    }
+    if (!this.KV) return console.error("no KV instance!");
     let val;
-    if (op == "get") args = args.slice(0, 1);
     try {
       if (op == "put" && typeof args[1] == "object") {
         args[1] = JSON.stringify(args[1]);
       }
       val = await this.KV[op](...args);
-      if (op == "get" && val && /^[{\[].*[\]}]$/.test(val)) {
-        val = JSON.parse(val);
-      }
+      // if (op == "get" && val && /^[{\[].*[\]}]$/.test(val)) {
+      //   val = JSON.parse(val);
+      // }
     } catch (err) {
       console.error("KV error", err);
     }
