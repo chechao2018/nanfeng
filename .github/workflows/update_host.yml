@@ -112,7 +112,7 @@ jobs:
           [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z $CF_API_TOKEN ] || [ -z $CF_NAMESPACE_ID ] && echo "secrets and CF_NAMESPACE_ID required!" && exit 1;
 
           filterhost() {
-            [ ! -s "$1" ] && echo file $1 is empty! >$2 && return
+            [ ! -s "$1" ] && echo file $1 is empty! >&2 && return
             [ -f tocheck.txt ] && rm tocheck.txt 2>/dev/null
             for d in `cat $1|sort -u`; do
               #dig +short @1.1.1.1 $d 
@@ -131,7 +131,7 @@ jobs:
 
           json_array_tolines(){
             local arr="$1"
-            [ -f "$1" ]; arr=`cat $1`
+            [ -f "$1" ] && arr=`cat $1`
              echo "$arr"|tr -d '["]'|sed -r 's/, */\n/g'
           }
           file_lines_tojson(){
@@ -142,7 +142,6 @@ jobs:
 
           check_backup(){
             local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
-            echo ret="$ret"
             if echo "$ret"|grep error; then
               grep 'namespace not found' <<< "$ret" && exit 1 || echo "$ret"
             elif [ ! -z "$ret" ] && [ "$ret" != "[]" ]; then
