@@ -228,7 +228,7 @@ jobs:
         name: get proxys data
         # if: ${{ github.event_name == 'workflow_call' }}
         run: |
-          file_lines_tojson -u remote.txt local.txt > $3
+          file_lines_tojson -u remote.txt local.txt > $CFHOST_JSON
           if [ ! -z '${{ inputs.proxys }}' ]; then
             echo '${{ inputs.proxys }}' > $PROXYS_JSON
           else
