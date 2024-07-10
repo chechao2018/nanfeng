@@ -41,7 +41,7 @@ export default class CF {
   proxy = { 443: "", 80: "", openai: "" };
   proxysLoaded;
 
-  //_cfhost = new Set(); //entry
+  _cfhost = new Set(); //entry
   cfhost = new Set(); //entry + cache
   cfhostRaw = false; //kv source
   cfhostLoaded;
@@ -51,6 +51,7 @@ export default class CF {
     if (proxys instanceof Array) this.proxys[443] = proxys;
     else this.proxys = proxys;
     cfhost.forEach(e => {
+      this._cfhost.add(e);
       this.cfhost.add(e);
     });
     this.initProxy();
