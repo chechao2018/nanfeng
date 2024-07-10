@@ -196,8 +196,8 @@ jobs:
             #fi
           fi
 
-      - id: prepare-cfhost-proxys-json
-        name: get proxys data
+      - id: get-proxys
+        name: prepare cfhost.json proxys.json
         # if: ${{ github.event_name == 'workflow_call' }}
         run: |
           . .github/common.sh
