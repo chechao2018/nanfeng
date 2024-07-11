@@ -64,7 +64,7 @@ generate_configs(){
 }
 post_handle(){
 	# grep -qE 'success": ?false'<<< "$1" && echo $ret >&2 && return 1 || echo "$2 success" >> $GITHUB_STEP_SUMMARY
-	grep -qE 'success": ?false'<<< "$1" && echo $ret >&2 && return 1 || echo "$2 success"
+	grep -qE 'success": ?false'<<< "$1" && echo $ret >&2 && return 1 || echo "$2 success" >&2
 }
 warn_no_uuid(){
 	[ "$1" != "WORKER" ] && [ "$1" != "PAGE" ] && echo error $1 && return
