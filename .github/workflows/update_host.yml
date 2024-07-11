@@ -148,7 +148,7 @@ jobs:
             
               bak=`file_lines_tojson remote.txt`
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
-                -d "$bak" "$CF_KV_API/$2" >> $GITHUB_STEP_SUMMARY
+                -d "$bak" "$CF_KV_API/$2"
             fi
             if [ -s local.txt ] && ([ '${{github.event.schedule}}' = '' ] || [ '${{github.event.schedule}}' =~ $ONCE_DAY ]); then
               echo 'filter local.txt' >> $GITHUB_STEP_SUMMARY
