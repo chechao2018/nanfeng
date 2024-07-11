@@ -63,7 +63,8 @@ generate_configs(){
 	echo '"env_vars":{"'$UUID'":{"type":"plain_text","value":"'$1'"}},"kv_namespaces":{"'$KV'":{"namespace_id":"'$CF_NAMESPACE_ID'"}}'
 }
 post_handle(){
-	grep -qE 'success": ?false'<<< "$1" && echo $ret >&2 && return 1 || echo "$2 success" >> $GITHUB_STEP_SUMMARY
+	# grep -qE 'success": ?false'<<< "$1" && echo $ret >&2 && return 1 || echo "$2 success" >> $GITHUB_STEP_SUMMARY
+	grep -qE 'success": ?false'<<< "$1" && echo $ret >&2 && return 1 || echo "$2 success"
 }
 warn_no_uuid(){
 	[ "$1" != "WORKER" ] && [ "$1" != "PAGE" ] && echo error $1 && return
@@ -126,7 +127,7 @@ deploy_page(){
 	ret=`upload_page`
 	post_handle "$ret" 'upload_page' 
 	if [ $? != 0 ]; then
-		sleep 1
+		sleep .5
 		ret=`upload_page`
 		post_handle "$ret" 'upload_page'
 	fi
@@ -136,13 +137,12 @@ deploy_page(){
 for n in `echo "$workerName" | tr -s ' ' '\n'|head -n 10`; do
 	workerName=$n
 	# echo "$n" | grep -P "$NAME_PAT"
-	[[ "$n" =~ $NAME_PAT ]] && deploy_worker && sleep 1 || echo "invalid worker name: $n"
+	[[ "$n" =~ $NAME_PAT ]] && deploy_worker && sleep .5 || echo "invalid worker name: $n"
 done
-
+echo "----------------------" >> $GITHUB_STEP_SUMMARY
 [ "$deployPage" = false ] && echo 'no deploy page' && exit
 [ -z "$pageName" ] && echo 'empty CF_PAGE_NAME' && exit
-echo ----------------------
 for n in `echo "$pageName" | tr -s ' ' '\n'|head -n 20`; do
 	pageName=$n
-	[[ "$n" =~ $NAME_PAT ]] && deploy_page && sleep 1 || echo "invalid page name: $n"
+	[[ "$n" =~ $NAME_PAT ]] && deploy_page && sleep .5 || echo "invalid page name: $n"
 done
