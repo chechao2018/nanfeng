@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ONCE_DAY='^[0-9]+ [0-9]+[^,\/]'
+
 json_array_tolines(){
   local arr="$1"
   [ -f "$1" ] && arr=`cat $1`

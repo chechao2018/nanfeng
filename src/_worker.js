@@ -847,9 +847,9 @@ ${vSec}
   const htmlHead = `
   <head>
 	<title>EDtunnel: VLESS configuration</title>
-	<meta name='description' content='This is a tool for generating Vless protocol configurations. Give us a star on GitHub https://github.com/3Kmfi6HP/EDtunnel if you found it useful!'>
-	<meta name='keywords' content='EDtunnel, cloudflare pages, cloudflare worker, severless'>
-	<meta name='viewport' content='width=device-width, initial-scale=1'>
+	<meta name='description' content='This is a tool for generating Vless protocol configurations. Give us a star on GitHub https://github.com/3Kmfi6HP/EDtunnel if you found it useful!' />
+	<meta name='keywords' content='EDtunnel, cloudflare pages, cloudflare worker, severless' />
+	<meta name='viewport' content='width=device-width, initial-scale=1' />
 	<meta property='og:site_name' content='EDtunnel: VLESS configuration' />
 	<meta property='og:type' content='website' />
 	<meta property='og:title' content='EDtunnel - VLESS configuration and subscribe output' />
