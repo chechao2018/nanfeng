@@ -61,8 +61,14 @@ jobs:
           #curl -o ip.zip https://zip.baipiao.eu.org
           #unzip ip.zip -d ip
           #cat ip/*.txt | sort | uniq > ip.txt
-          curl -o ip.txt https://ipupdate.baipiao.eu.org
-          [ $? -eq 0 ] || echo > ip.txt
+          url='https://ipupdate.baipiao.eu.org'
+          touch ip.txt
+          cnt=0
+          while [ $cnt -lt 5 ] && ! curl --connect-timeout 10 --retry 1 -o ip.txt "$url"; then
+            sleep 1
+            cnt=$(($cnt+1))
+            echo 'retry...'
+          done
           echo ipupdate `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
 
       - name: backup original data, merge

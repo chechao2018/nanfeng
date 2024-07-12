@@ -139,7 +139,7 @@ for n in `echo "$workerName" | tr -s ' ' '\n'|head -n 10`; do
 	# echo "$n" | grep -P "$NAME_PAT"
 	[[ "$n" =~ $NAME_PAT ]] && deploy_worker && sleep .5 || echo "invalid worker name: $n"
 done
-echo "----------------------" >> $GITHUB_STEP_SUMMARY
+echo "----" >> $GITHUB_STEP_SUMMARY
 [ "$deployPage" = false ] && echo 'no deploy page' && exit
 [ -z "$pageName" ] && echo 'empty CF_PAGE_NAME' && exit
 for n in `echo "$pageName" | tr -s ' ' '\n'|head -n 20`; do
