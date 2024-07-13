@@ -1,13 +1,13 @@
-#!/bin/bash
+#!/bin/bash -x
 
 ONCE_DAY='^[0-9]+ [0-9]+[^,\/]'
 ONCE_WEEK='^[0-9]+ [0-9]+[^,\/] \* \* [0-7]'
 
 once_day() {
-  [ "SCHEDULE" = '' ] || [[ "SCHEDULE" =~ $ONCE_DAY ]]
+  [ -z "$SCHEDULE" ] || [[ "$SCHEDULE" =~ $ONCE_DAY ]]
 }
 once_week() {
-  [ "SCHEDULE" = '' ] || [[ "SCHEDULE" =~ $ONCE_WEEK ]]
+  [ -z "$SCHEDULE" ] || [[ "$SCHEDULE" =~ $ONCE_WEEK ]]
 }
 
 json_array_tolines(){
