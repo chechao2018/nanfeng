@@ -64,7 +64,7 @@ jobs:
           url='https://ipupdate.baipiao.eu.org'
           touch ip.txt
           cnt=0
-          while [ $cnt -lt 5 ] && ! curl --connect-timeout 10 --retry 1 -o ip.txt "$url"; then
+          while [ $cnt -lt 5 ] && ! curl --connect-timeout 10 --retry 1 -o ip.txt "$url"; do
             sleep 1
             cnt=$(($cnt+1))
             echo 'retry...'

@@ -6,6 +6,7 @@ name: cfhost Workflow
 on:
   schedule:
     - cron: "0 * * * *"
+    - cron: "0 23 * * 6"
     # - cron: "30 22 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
@@ -85,6 +86,7 @@ env:
   CFHOST: cfhost
   CFHOST_BAK: cfhost_bak
   CFHOST_JSON: src/cfhost.json
+  CFHOSTPAT_JS: src/cfhostpat.js
   PROXYS: proxys
   PROXYS_UPDATED: proxys_updated
   PROXYS_JSON: src/proxys.json
@@ -114,21 +116,21 @@ jobs:
           touch remote.txt
 
           check_backup(){
-            json_array_tolines $3 > local.txt
-            echo "$3 - `wc -l local.txt`" >> $GITHUB_STEP_SUMMARY
+            json_array_tolines $CFHOST_JSON > local.txt
+            echo "$CFHOST_JSON - `wc -l local.txt`" >> $GITHUB_STEP_SUMMARY
             
-            local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$1"`
+            local ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$CFHOST"`
             if echo "$ret"|grep error; then
               grep 'namespace not found' <<< "$ret" && exit 1 || echo "$ret"
             elif [ ! -z "$ret" ] && [ "$ret" != "[]" ]; then
               json_array_tolines $ret > remote.txt
-              echo "get kv $1, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
+              echo "get kv $CFHOST, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
               
-              local bak=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$2"`
+              local bak=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/$CFHOST_BAK"`
               if ! echo "$bak"|grep error && [ ! -z "$bak" ] && [ "$bak" != "[]" ]; then
                 json_array_tolines $bak >> remote.txt
                 sort -uo remote.txt remote.txt
-                echo "get kv $2, merge, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
+                echo "get kv $CFHOST_BAK, merge, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
               fi
                 
               #diff -b --suppress-common-lines remote.txt local.txt | grep '<' | sed 's/< *//' > remote.txt
@@ -144,20 +146,24 @@ jobs:
             
               bak=`file_lines_tojson remote.txt`
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
-                -d "$bak" "$CF_KV_API/$2"
+                -d "$bak" "$CF_KV_API/$CFHOST_BAK"
             fi
-            if [ -s local.txt ] && ([ '${{github.event.schedule}}' = '' ] || [ '${{github.event.schedule}}' =~ $ONCE_DAY ]); then
+            if [ -s local.txt ] && once_week; then
               filterhost local.txt > tmp
               [ ! -s tmp ] && echo 'maybe filterhost error!' && exit 1
-              if [ `comm -23 <(sort local.txt) <(sort tmp)|wc -l` != 0 ]; then
-                file_lines_tojson tmp > $3
-                echo "cfhostjsonChanged=true" >> $GITHUB_ENV;
-              fi
+              #if [ `comm -23 <(sort local.txt) <(sort tmp)|wc -l` != 0 ]; then
+                file_lines_tojson tmp > $CFHOST_JSON
+              #  echo "cfhostjsonChanged=true" >> $GITHUB_ENV;
+              #fi
               mv tmp local.txt
               echo "filter, `wc -l local.txt`" >> $GITHUB_STEP_SUMMARY
             fi
+            if once_week; then
+              node $CFHOSTPAT_JS toLines > pat.txt
+              filterhost pat.txt $CFHOSTPAT_JS
+            fi
           }
-          check_backup $CFHOST $CFHOST_BAK $CFHOST_JSON
+          check_backup
 
       - id: check-change
         name: check change of cfhost.json, proxys update time
@@ -167,13 +173,13 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if [ "$cfhostjsonChanged" = true ]; then
+          if git diff $CFHOST_JSON $CFHOSTPAT_JS | wc -l; then
             git config user.name "GitHub Actions Bot"
             git config user.email "<>"
-            git add $CFHOST_JSON
-            git commit -m "updated $CFHOST_JSON"
+            git add $CFHOST_JSON $CFHOSTPAT_JS
+            git commit -m "updated local $CFHOST"
             git push
-            echo "$CFHOST_JSON changed" >> $GITHUB_STEP_SUMMARY
+            echo "local $CFHOST changed" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "$kvCfhostChanged" = false ]; then
             echo "kv $CFHOST no change" >> $GITHUB_STEP_SUMMARY

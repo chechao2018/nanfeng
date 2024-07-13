@@ -1,6 +1,15 @@
 #!/bin/bash
 
 ONCE_DAY='^[0-9]+ [0-9]+[^,\/]'
+ONCE_WEEK='^[0-9]+ [0-9]+[^,\/] \* \* [0-7]'
+schedule='${{github.event.schedule}}'
+
+once_day() {
+  [ "$schedule" = '' ] || [ "$schedule" =~ $ONCE_DAY ]
+}
+once_week() {
+  [ "$schedule" = '' ] || [ "$schedule" =~ $ONCE_WEEK ]
+}
 
 json_array_tolines(){
   local arr="$1"
@@ -23,10 +32,7 @@ filterhost() {
     [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
   done
   if [ -s tocheck.txt ]; then
-    local cidr='src/cfcidr'
-    [ -f $cidr.js ] && local js=1 && mv $cidr.js $cidr.mjs
-    node .github/filterhost.mjs tocheck.txt
-    [ "$js" = 1 ] && mv $cidr.mjs $cidr.js
+    node .github/filterhost.mjs tocheck.txt $2
   #else 
   #  > $1
   fi
