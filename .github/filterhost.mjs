@@ -51,5 +51,5 @@ const argv = process.argv.slice(2);
 if (argv.length == 1) handleLine(argv[0]);
 if (argv.length == 2) {
   let i = argv.findIndex(a => /cfhostpat/.test(a));
-  i > -1 && handlePat(argv[argv.length - i]);
+  i > -1 && handlePat(argv[argv.length - 1 - i]);
 }
