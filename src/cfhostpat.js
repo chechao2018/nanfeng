@@ -46,7 +46,7 @@ export function remove(data, domains) {
   domains.forEach(d => {
     const pre = d.slice(0, d.lastIndexOf("."));
     const suf = d.slice(d.lastIndexOf("."));
-    pat = RegExp(`[,\\s]((?:'|")?${suf}(?:'|")?: ?)(?:'|")(.*)(?:'|"),?`);
+    pat = RegExp(`([,\n\\s]+(?:'|")?${suf}(?:'|")?: ?)(?:'|")(.*)(?:'|"),?`);
     ret = ret.replace(pat, (l, g1, g2) => {
       const arr = g2
         .split("|")

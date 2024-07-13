@@ -36,7 +36,7 @@ async function handlePat(filename) {
     const toRemove = [];
     toArray().forEach(d => domains.includes(d) || toRemove.push(d));
     const result = remove(data, toRemove);
-
+    // console.log(result);
     fs.writeFile(file, result, "utf8", err => {
       if (err) return console.error(err);
     });
