@@ -14,31 +14,27 @@ async function dynamicImport(file) {
 }
 
 async function handleLine(filename) {
+  const domains = [];
   const fileStream = fs.createReadStream(filename);
   const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
   for await (const line of rl) {
     const [ip, domain] = line.split(/, *| +/);
-    ip && inCfcidr(ip) && console.log(domain);
+    ip && inCfcidr(ip) && domains.push(domain);
   }
+  return domains;
 }
 
 //https://stackoverflow.com/questions/14177087/replace-a-string-in-a-file-with-nodejs
 async function handlePat(filename) {
-  const toRemove = [];
-  const fileStream = fs.createReadStream(filename);
-  const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
-  for await (const line of rl) {
-    const [ip, domain] = line.split(/, *| +/);
-    (ip && inCfcidr(ip)) || toRemove.push(domain);
-  }
-
-  if (!toRemove.length) return;
+  const domains = await handleLine(filename);
 
   const file = "src/cfhostpat.js";
-  const { remove } = await dynamicImport(file);
+  const { toArray, remove } = await dynamicImport(file);
   fs.readFile(file, "utf8", (err, data) => {
     if (err) return console.error(err);
 
+    const toRemove = [];
+    toArray().forEach(d => domains.includes(d) || toRemove.push(d));
     const result = remove(data, toRemove);
 
     fs.writeFile(file, result, "utf8", err => {
@@ -48,7 +44,7 @@ async function handlePat(filename) {
 }
 
 const argv = process.argv.slice(2);
-if (argv.length == 1) handleLine(argv[0]);
+if (argv.length == 1) handleLine(argv[0]).then(r => console.log(r.join("\n")));
 if (argv.length == 2) {
   let i = argv.findIndex(a => /cfhostpat/.test(a));
   i > -1 && handlePat(argv[argv.length - 1 - i]);

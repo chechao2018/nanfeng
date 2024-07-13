@@ -36,16 +36,17 @@ const hostedDomain = {
   vip: "18comic|digimovie|freeok",
   xxx: "hentaihaven",
   xyz: "1fuli",
-  yt: "dood",
+  yt: "dood|test",
+  'bar': 'foo',
 };
 
 export function remove(data, domains) {
   let pat,
     ret = data;
   domains.forEach(d => {
-    const pre = d.slice(0, d.lastIndexOf('.'))
-    const suf = d.slice(d.lastIndexOf('.'))
-    pat = RegExp(`(\\s+${suf}: ?)(?:'|")(.*)(?:'|"),?`);
+    const pre = d.slice(0, d.lastIndexOf("."));
+    const suf = d.slice(d.lastIndexOf("."));
+    pat = RegExp(`[,\\s]((?:'|")?${suf}(?:'|")?: ?)(?:'|")(.*)(?:'|"),?`);
     ret = ret.replace(pat, (l, g1, g2) => {
       const arr = g2
         .split("|")
