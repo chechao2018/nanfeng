@@ -142,7 +142,7 @@ jobs:
                  echo "filter, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
               fi
               ret=`file_lines_tojson remote.txt`
-              [ "$ret" = "$bak" ] && echo "kvCfhostChanged=false" >> $GITHUB_ENV;
+              [ "$ret" != "$bak" ] && echo "kvCfhostChanged=true" >> $GITHUB_ENV;
             
               bak=`file_lines_tojson remote.txt`
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
@@ -180,9 +180,9 @@ jobs:
             git commit -m "updated local $CFHOST"
             git push
             echo "local $CFHOST changed" >> $GITHUB_STEP_SUMMARY
+            localCfhostChanged=true
           fi
-          if [ "$kvCfhostChanged" = false ]; then
-            echo "kv $CFHOST no change" >> $GITHUB_STEP_SUMMARY
+          if [ "$kvCfhostChanged" != true ] && [ "$localCfhostChanged" != true ]; then
             [ ! -z '${{ inputs.proxys }}' ] || [ $EVENT_NAME != schedule ] && exit;
             
             # cancel when trigger on schedule # [ -z `git diff --name-only $BEFORE $AFTER 2>&1` ]

@@ -85,13 +85,17 @@ const cfhostPat = new RegExp(
 );
 export default cfhostPat;
 
-const arg = process.argv[2];
-if (arg) {
-  try {
-    const f = eval(arg);
-    if (typeof f == "function") {
-      const r = f();
-      console.log(r);
+if (typeof process != "undefined") {
+  const arg = process.argv[2];
+  if (arg) {
+    try {
+      const f = eval(arg);
+      if (typeof f == "function") {
+        const r = f();
+        console.log(r);
+      }
+    } catch (e) {
+      console.error("no function:", arg);
     }
-  } catch (e) {}
+  }
 }
