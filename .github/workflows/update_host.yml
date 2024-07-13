@@ -173,7 +173,7 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if git diff $CFHOST_JSON $CFHOSTPAT_JS | wc -l; then
+          if [ `git diff $CFHOST_JSON $CFHOSTPAT_JS | wc -l` != 0 ]; then
             git config user.name "GitHub Actions Bot"
             git config user.email "<>"
             git add $CFHOST_JSON $CFHOSTPAT_JS
