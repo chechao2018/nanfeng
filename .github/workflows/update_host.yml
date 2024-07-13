@@ -73,6 +73,7 @@ env:
   pageName: ${{inputs.CF_PAGE_NAME || vars.CF_PAGE_NAME}}
   pageBranch: ${{inputs.CF_PAGE_BRANCH || vars.CF_PAGE_BRANCH || 'main'}}
   EVENT_NAME: ${{github.event_name}}
+  SCHEDULE: ${{github.event.schedule}}
 
   CF_SCRIPT_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/scripts
   CF_SERVICE_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/workers/services
@@ -139,7 +140,7 @@ jobs:
               
               if [ -s remote.txt ]; then
                 filterhost remote.txt > tmp && mv tmp remote.txt
-                 echo "filter, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
+                echo "filter, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
               fi
               ret=`file_lines_tojson remote.txt`
               [ "$ret" != "$bak" ] && echo "kvCfhostChanged=true" >> $GITHUB_ENV;
@@ -148,7 +149,8 @@ jobs:
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                 -d "$bak" "$CF_KV_API/$CFHOST_BAK"
             fi
-            if [ -s local.txt ] && once_week; then
+            if [ -s local.txt ] && once_day; then
+              echo check $CFHOST_JSON ...
               filterhost local.txt > tmp
               [ ! -s tmp ] && echo 'maybe filterhost error!' && exit 1
               #if [ `comm -23 <(sort local.txt) <(sort tmp)|wc -l` != 0 ]; then
@@ -159,6 +161,7 @@ jobs:
               echo "filter, `wc -l local.txt`" >> $GITHUB_STEP_SUMMARY
             fi
             if once_week; then
+              echo check $CFHOSTPAT_JS ...
               node $CFHOSTPAT_JS toLines > pat.txt
               filterhost pat.txt $CFHOSTPAT_JS
             fi

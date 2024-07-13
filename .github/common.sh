@@ -2,15 +2,12 @@
 
 ONCE_DAY='^[0-9]+ [0-9]+[^,\/]'
 ONCE_WEEK='^[0-9]+ [0-9]+[^,\/] \* \* [0-7]'
-schedule='${{github.event.schedule}}'
-
-echo "$schdule"
 
 once_day() {
-  [ "$schedule" = '' ] || [[ "$schedule" =~ $ONCE_DAY ]]
+  [ "SCHEDULE" = '' ] || [[ "SCHEDULE" =~ $ONCE_DAY ]]
 }
 once_week() {
-  [ "$schedule" = '' ] || [[ "$schedule" =~ $ONCE_WEEK ]]
+  [ "SCHEDULE" = '' ] || [[ "SCHEDULE" =~ $ONCE_WEEK ]]
 }
 
 json_array_tolines(){
