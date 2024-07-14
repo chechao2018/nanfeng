@@ -68,7 +68,7 @@ post_handle(){
 }
 warn_no_uuid(){
 	[ "$1" != "WORKER" ] && [ "$1" != "PAGE" ] && echo error $1 && return
-	echo "Warning: $1 UUID is empty! you can set a repo secret named 'CF_${1}_UUID' or fill in cloudflare dashboard worker settings then try again" | tee -a $GITHUB_STEP_SUMMARY
+	echo "Warning: $1 $2 UUID is empty! you can set a repo secret named 'CF_${1}_UUID' or fill in cloudflare dashboard $1 settings then try again" | tee -a $GITHUB_STEP_SUMMARY
 }
 
 [ ! -s "$ENTRY" ] && echo "$ENTRY not found!" && exit 1;
@@ -80,15 +80,15 @@ deploy_worker(){
 	if [ ! -z $2 ]; then
 		bindings=`generate_bindings $2`
 		ret=`upload_worker $1 $bindings`
-		post_handle "$ret" 'upload_worker' || exit 1
+		post_handle "$ret" "upload_worker $1" || exit 1
 	else
 		ret=`put_script $1`
-		post_handle "$ret" 'put_script' || exit 1
+		post_handle "$ret" "put_script $1" || exit 1
 		ret=`get_worker_settings $1`
 		local nsid=`jq -r '.result.bindings[] | select(.name == "'$KV'") | .namespace_id' <<< $ret`
 		local uuid=`jq -r '.result.bindings[] | select(.name == "'$UUID'") | .text' <<< $ret`
 		compatDate=`jq -r '.result.compatibility_date' <<< $ret`
-		[ -z $uuid ] && warn_no_uuid WORKER
+		[ -z $uuid ] && warn_no_uuid WORKER $1
 		if [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ] || [ -z $compatDate ]; then
 			bindings=`generate_bindings $uuid`
 			ret=`patch_worker_settings $1 $bindings`
@@ -119,7 +119,7 @@ deploy_page(){
 		elif [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ]; then
 			configs=`generate_configs $uuid`
 		elif [ -z $uuid ]; then
-			warn_no_uuid PAGE
+			warn_no_uuid PAGE $n
 		fi
 	fi
 	if [ ! -z $configs ]; then
@@ -127,11 +127,11 @@ deploy_page(){
 		post_handle "$ret" 'patch_page' || exit 1
 	fi
 	ret=`upload_page $1`
-	post_handle "$ret" 'upload_page' 
+	post_handle "$ret" "upload_page $n"
 	if [ $? != 0 ]; then
 		sleep .5
 		ret=`upload_page $1`
-		post_handle "$ret" 'retry upload_page'
+		post_handle "$ret" "retry upload_page $n"
 	fi
 }
 
