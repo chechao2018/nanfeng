@@ -11,49 +11,49 @@ PLACEMENT='"placement":{"mode":"smart"}'
 COMPATIBILITY_DATE='"compatibility_date":"2024-06-20"'
 #--------------------------
 upload_worker(){
-	local fMetadata='metadata={'$MAIN_MODULE,$PLACEMENT,$COMPATIBILITY_DATE',"bindings":['$1']}'
+	local fMetadata='metadata={'$MAIN_MODULE,$PLACEMENT,$COMPATIBILITY_DATE',"bindings":['$2']}'
 	curl -X PUT -H "$AUTH" -H "$TYPE_FORMDATA" -F "$FORM_FILE" -F "$fMetadata" \
-		$CF_SCRIPT_API/$workerName
+		$CF_SCRIPT_API/$1
 }
 put_script(){
 	local fMetadata="metadata={$MAIN_MODULE}"
 	curl -X PUT -H "$AUTH" -H "$TYPE_FORMDATA" -F "$FORM_FILE" -F "$fMetadata" \
-		$CF_SCRIPT_API/$workerName/content
+		$CF_SCRIPT_API/$1/content
 }
 get_worker_settings(){
-	curl -H "$AUTH" $CF_SCRIPT_API/$workerName/settings
+	curl -H "$AUTH" $CF_SCRIPT_API/$1/settings
 }
 patch_worker_settings(){
-	local fSettings='settings={'$MAIN_MODULE,$PLACEMENT,$COMPATIBILITY_DATE',"bindings":['$1']}'
+	local fSettings='settings={'$MAIN_MODULE,$PLACEMENT,$COMPATIBILITY_DATE',"bindings":['$2']}'
 	curl -X PATCH -H "$AUTH" -H "$TYPE_FORMDATA" -F "$fSettings" \
-		$CF_SCRIPT_API/$workerName/settings
+		$CF_SCRIPT_API/$1/settings
 }
 worker_subdomain_enabled(){
-	curl -H "$AUTH" $CF_SERVICE_API/$workerName/environments/production/subdomain|grep 'enabled": true'
+	curl -H "$AUTH" $CF_SERVICE_API/$1/environments/production/subdomain|grep 'enabled": true'
 }
 enable_worker_subdomain(){
 	local data='{"enabled":true}'
-	curl -X POST -H "$AUTH" -H "$TYPE_JSON" -d "$data" $CF_SCRIPT_API/$workerName/subdomain
+	curl -X POST -H "$AUTH" -H "$TYPE_JSON" -d "$data" $CF_SCRIPT_API/$1/subdomain
 }
 page_deployment(){
 	local qs="?page=1&per_page=1&sort_by=created_on&sort_order=desc&env=$CF_PAGE_ENV"
-	local ret=`curl -H "$AUTH" "$CF_PROJECT_API/$pageName/deployments$qs"`
+	local ret=`curl -H "$AUTH" "$CF_PROJECT_API/$1/deployments$qs"`
 	post_handle "$ret" 'had_page_deployment'
 	jq -r '.result' <<< $ret
 }
 create_page(){
 	[ $pageBranch != main ] && local preview=',"preview_branch":"'$pageBranch'"'
-	local data='{"name":"'$pageName'","production_branch":"main"'$preview'}'
+	local data='{"name":"'$1'","production_branch":"main"'$preview'}'
 	curl -X POST -H "$AUTH" -H "$TYPE_JSON" -d "$data" $CF_PROJECT_API
 }
 upload_page(){
 	local fManifest='manifest={}' fBranch="branch=$pageBranch"
 	curl -X POST -H "$AUTH" -H "$TYPE_FORMDATA" -F "$FORM_FILE" -F "$fManifest" -F "$fBranch" \
-		$CF_PROJECT_API/$pageName/deployments
+		$CF_PROJECT_API/$1/deployments
 }
 patch_page(){
-	local data='{"deployment_configs":{"'$CF_PAGE_ENV'":{'$PLACEMENT,$1'}}}'
-	curl -X PATCH -H "$AUTH" -H "$TYPE_JSON" -d "$data" $CF_PROJECT_API/$pageName
+	local data='{"deployment_configs":{"'$CF_PAGE_ENV'":{'$PLACEMENT,$2'}}}'
+	curl -X PATCH -H "$AUTH" -H "$TYPE_JSON" -d "$data" $CF_PROJECT_API/$1
 }
 #-------------------
 generate_bindings(){
@@ -74,75 +74,81 @@ warn_no_uuid(){
 [ ! -s "$ENTRY" ] && echo "$ENTRY not found!" && exit 1;
 
 deploy_worker(){
-	#[ -z $workerName ] && echo "CF_WORKER_NAME is required!" && return;
-	echo "deploy worker $workerName ..." >> $GITHUB_STEP_SUMMARY
+	[ -z $1 ] && echo "CF_WORKER_NAME is required!" && return;
+	echo "deploy worker $1 ..." >> $GITHUB_STEP_SUMMARY
 
-	if [ ! -z $CF_WORKER_UUID ]; then
-		bindings=`generate_bindings $CF_WORKER_UUID`
-		ret=`upload_worker $bindings`
+	if [ ! -z $2 ]; then
+		bindings=`generate_bindings $2`
+		ret=`upload_worker $1 $bindings`
 		post_handle "$ret" 'upload_worker' || exit 1
 	else
-		ret=`put_script`
+		ret=`put_script $1`
 		post_handle "$ret" 'put_script' || exit 1
-		ret=`get_worker_settings`
-		nsid=`jq -r '.result.bindings[] | select(.name == "'$KV'") | .namespace_id' <<< $ret`
-		uuid=`jq -r '.result.bindings[] | select(.name == "'$UUID'") | .text' <<< $ret`
+		ret=`get_worker_settings $1`
+		local nsid=`jq -r '.result.bindings[] | select(.name == "'$KV'") | .namespace_id' <<< $ret`
+		local uuid=`jq -r '.result.bindings[] | select(.name == "'$UUID'") | .text' <<< $ret`
 		compatDate=`jq -r '.result.compatibility_date' <<< $ret`
 		[ -z $uuid ] && warn_no_uuid WORKER
 		if [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ] || [ -z $compatDate ]; then
 			bindings=`generate_bindings $uuid`
-			ret=`patch_worker_settings $bindings`
+			ret=`patch_worker_settings $1 $bindings`
 			post_handle "$ret" 'patch_worker_settings' || exit 1
 		fi
 	fi
-	worker_subdomain_enabled || enable_worker_subdomain
+	worker_subdomain_enabled $1 || enable_worker_subdomain $1
 }
 deploy_page(){
 	[ ! $deployPage ] && exit;
-	[ -z $pageName ] && echo "CF_PAGE_NAME is required!" && exit 1;
-	echo "deploy page $pageName ..." >> $GITHUB_STEP_SUMMARY
+	[ -z $1 ] && echo "CF_PAGE_NAME is required!" && return;
+	local n=$1; 
+	[[ $1 =~ -[a-z0-9]{3,} ]] && n=${1%-*}-***
+	echo "deploy page $n ..." >> $GITHUB_STEP_SUMMARY
 	
-	ret=`page_deployment`
+	ret=`page_deployment $1`
 	if [ "$ret" == null ]; then
-		ret=`create_page`
+		ret=`create_page $1`
 		post_handle "$ret" 'create_page' || exit 1
-		configs=`generate_configs $CF_PAGE_UUID $CF_NAMESPACE_ID`
+		configs=`generate_configs $2`
 	elif [ "$ret" == [] ]; then
-		configs=`generate_configs $CF_PAGE_UUID $CF_NAMESPACE_ID`
+		configs=`generate_configs $2`
 	else
-		uuid=`jq -r '.[0].env_vars.'$UUID'.value' <<< $ret`
-		nsid=`jq -r '.[0].kv_namespaces.'$KV'.namespace_id' <<< $ret`
-		if [ ! -z $CF_PAGE_UUID ] && [ "$uuid" != "$CF_PAGE_UUID" ]; then
-			configs=`generate_configs $CF_PAGE_UUID $CF_NAMESPACE_ID`
+		local uuid=`jq -r '.[0].env_vars.'$UUID'.value' <<< $ret`
+		local nsid=`jq -r '.[0].kv_namespaces.'$KV'.namespace_id' <<< $ret`
+		if [ ! -z $2 ] && [ "$uuid" != "$2" ]; then
+			configs=`generate_configs $2`
 		elif [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ]; then
-			configs=`generate_configs $uuid $CF_NAMESPACE_ID`
+			configs=`generate_configs $uuid`
 		elif [ -z $uuid ]; then
 			warn_no_uuid PAGE
 		fi
 	fi
 	if [ ! -z $configs ]; then
-		ret=`patch_page $configs`
+		ret=`patch_page $1 $configs`
 		post_handle "$ret" 'patch_page' || exit 1
 	fi
-	ret=`upload_page`
+	ret=`upload_page $1`
 	post_handle "$ret" 'upload_page' 
 	if [ $? != 0 ]; then
 		sleep .5
-		ret=`upload_page`
-		post_handle "$ret" 'upload_page'
+		ret=`upload_page $1`
+		post_handle "$ret" 'retry upload_page'
 	fi
 }
 
-[ -z "$workerName" ] && echo 'empty CF_WORKER_NAME'
-for n in `echo "$workerName" | tr -s ' ' '\n'|head -n 10`; do
-	workerName=$n
-	# echo "$n" | grep -P "$NAME_PAT"
-	[[ "$n" =~ $NAME_PAT ]] && deploy_worker && sleep .5 || echo "invalid worker name: $n"
-done
-echo -e "\n----" >> $GITHUB_STEP_SUMMARY
+deploy(){
+	local names=(`echo "$1" | tr -s ' ' '\n'|head -n 20`)
+	local uuids=(`echo "$2" | tr -s ' ' '\n'|head -n 20`)
+	local name uuid
+	for ((i=0; i<${#names[@]}; i++)); do
+		name=${names[$i]}
+		uuid=${uuids[$i]}
+		# echo "$n" | grep -P "$NAME_PAT"
+		[[ "$name" =~ $NAME_PAT ]] && $3 $name $uuid && sleep .5 || echo "invalid name: $name"
+	done
+}
+
+[ -z "$workerName" ] && echo 'empty CF_WORKER_NAME' || deploy "$workerName" "$CF_WORKER_UUID" deploy_worker
 [ "$deployPage" = false ] && echo 'no deploy page' && exit
 [ -z "$pageName" ] && echo 'empty CF_PAGE_NAME' && exit
-for n in `echo "$pageName" | tr -s ' ' '\n'|head -n 20`; do
-	pageName=$n
-	[[ "$n" =~ $NAME_PAT ]] && deploy_page && sleep .5 || echo "invalid page name: $n"
-done
+echo >> $GITHUB_STEP_SUMMARY
+deploy "$pageName" "$CF_PAGE_UUID" deploy_page

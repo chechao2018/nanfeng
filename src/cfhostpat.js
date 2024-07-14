@@ -1,5 +1,5 @@
 const cfdomain =
-  "cloudflare(stream|storage|-ipfs|-dns)?.(com|tv|dev)|(workers|pages).dev|one.one.one.one";
+  "cloudflare(previews|stream|storage|workers|-ipfs|-dns)?.(com|tv|dev)|(workers|pages).dev|one.one.one.one";
 const hostedDomain = {
   ai: "ckk",
   app: "cupfox|exeo|gimy",
@@ -36,8 +36,7 @@ const hostedDomain = {
   vip: "18comic|digimovie|freeok",
   xxx: "hentaihaven",
   xyz: "1fuli",
-  yt: "dood|test",
-  'bar': 'foo',
+  yt: "dood",
 };
 
 export function remove(data, domains) {
@@ -46,16 +45,16 @@ export function remove(data, domains) {
   domains.forEach(d => {
     const pre = d.slice(0, d.lastIndexOf("."));
     const suf = d.slice(d.lastIndexOf("."));
-    pat = RegExp(`([,\n\\s]+(?:'|")?${suf}(?:'|")?: ?)(?:'|")(.*)(?:'|"),?`);
-    ret = ret.replace(pat, (l, g1, g2) => {
-      const arr = g2
+    pat = RegExp(`(,?\n?\\s*)((?:'|")?${suf}(?:'|")?: ?)(?:'|")(.*)(?:'|"),?`);
+    ret = ret.replace(pat, (l, g1, g2, g3) => {
+      const v = g3
         .split("|")
         .filter(p => p != pre)
         .join("|");
-      return arr.length ? g1 + `"${arr.toString()}",` : "";
+      return v ? g1 + g2 + `"${v}"` : g1;
     });
   });
-  return ret;
+  return ret.replace(/\n\s\n/g, "\n");
 }
 
 export function toArray() {
@@ -91,11 +90,11 @@ if (typeof process != "undefined") {
   const arg = process.argv[2];
   if (arg) {
     try {
+      let r;
       const f = eval(arg);
-      if (typeof f == "function") {
-        const r = f();
-        console.log(r);
-      }
+      if (typeof f == "function") r = f();
+      else if (typeof f != undefined) r = f.toString();
+      r && console.log(r);
     } catch (e) {
       console.error("no function:", arg);
     }
