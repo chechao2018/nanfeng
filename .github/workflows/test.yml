@@ -29,6 +29,9 @@ on:
         default: ""
         type: "string"
 
+env:
+  multilines: '${{vars.MULTILINES}}'
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
@@ -40,6 +43,13 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
+
+      - name: action test
+        run: |
+          echo ----multilines vars----
+          echo '${{vars.MULTILINES}}'
+          echo ----
+          echo "$multilines"
 
       - name: comm test
         run: |

@@ -8,7 +8,7 @@ const hostedDomain = {
   cc: "domp4|myasiantv",
   club: "madou",
   co: "watchfreejavonline",
-  com: "52poke|91porn|91porny|activehosted|adpointbreakrtb|adpointrtb|ahhhhfs|androidcontents|apkcombo|apkmirror|apkpure|apkshub|askubuntu|asurascans|bamboohr|bdys01|bscscan|bt-tt|chatgpt|codenong|dirtyship|discord|duplichecker|fextralife|filecr|filmaffinity|forexfactory|getbootstrap|getintopc|hdmoli|hrishikeshpathak|huijiwiki|iloveimg|imagetwist|incestflix|influencersgonewild|japaneseasmr|javatpoint|javdb|javmost|junmajinlong|laracasts|lectortmo|linkvertise|linuxhint|loverslab|modyolo|mydramalist|ncctvgroup|oaistatic|pexels|piliapp|pixabay|pngtree|rapidtables|reaperscans|rrdynb|serverfault|sexkbj|slidesgo|smallseotools|stackabuse|stackexchange|stackoverflow|stardewvalleywiki|superuser|supjav|tktube|towardsdatascience|transcend-cdn|twittervideodownloader|unpkg|webmota|witanime|wnacg|xhamster3|yuxiweibang|zztongyun",
+  com: "52poke|91porn|91porny|activehosted|adpointbreakrtb|adpointrtb|ahhhhfs|androidcontents|apkcombo|apkmirror|apkpure|apkshub|askubuntu|asurascans|bamboohr|bdys01|bscscan|bt-tt|chatgpt|codenong|dirtyship|discord|duplichecker|fextralife|filecr|filmaffinity|forexfactory|getbootstrap|getintopc|hdmoli|hrishikeshpathak|iloveimg|imagetwist|incestflix|influencersgonewild|japaneseasmr|javatpoint|javdb|javmost|junmajinlong|laracasts|lectortmo|linkvertise|linuxhint|loverslab|modyolo|mydramalist|ncctvgroup|oaistatic|pexels|piliapp|pixabay|pngtree|rapidtables|reaperscans|rrdynb|serverfault|sexkbj|slidesgo|smallseotools|stackabuse|stackexchange|stackoverflow|stardewvalleywiki|superuser|supjav|tktube|towardsdatascience|transcend-cdn|twittervideodownloader|unpkg|webmota|witanime|wnacg|xhamster3|yuxiweibang|zztongyun",
   es: "xvideos",
   guru: "jav",
   in: "brainly|hostinger",
@@ -36,7 +36,7 @@ const hostedDomain = {
   vip: "18comic|digimovie|freeok",
   xxx: "hentaihaven",
   xyz: "1fuli",
-  yt: "dood",
+  yt: "dood"
 };
 
 export function remove(data, domains) {
