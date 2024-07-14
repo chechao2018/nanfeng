@@ -6,7 +6,7 @@ import cfhost from "./cfhost.json";
 
 // How to generate your own UUID:
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
-let userID = "90cd4a77-141a-43c9-991b-08263cfe9c11";
+let userID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 
 // reversed proxy (Non-CF ISP)
 //const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn--b6gac.eu.org","cdn-all.xn--b6gac.eu.org"]
@@ -108,9 +108,7 @@ export default {
           }
           case `/bestip/${userID_Path}`: {
             const headers = request.headers;
-            const url = `https://sub.xf.free.hr/auto?host=${request.headers.get(
-              "Host"
-            )}&uuid=${userID}&path=/`;
+            const url = `https://sub.xf.free.hr/auto?host=${request.headers.get("Host")}&uuid=${userID}&path=/`;
             const bestSubConfig = await fetch(url, { headers: headers });
             return bestSubConfig;
           }
@@ -347,11 +345,7 @@ async function handleTCPOutBound(
     remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log);
   }
   let r = undefined;
-  if (
-    !cfhostPat.test(addressRemote) &&
-    !cf.cfhost.has(addressRemote) &&
-    !(r = inCfcidr(addressRemote))
-  ) {
+  if (!cfhostPat.test(addressRemote) && !cf.cfhost.has(addressRemote) && !(r = inCfcidr(addressRemote))) {
     const tcpSocket = await connectAndWrite(addressRemote, portRemote);
     // when remoteSocket is ready, pass to websocket
     // remote--> ws
@@ -498,22 +492,16 @@ function processVHeader(vBuffer, userID) {
   switch (addressType) {
     case 1:
       addressLength = 4;
-      addressValue = new Uint8Array(
-        vBuffer.slice(addressValueIndex, addressValueIndex + addressLength)
-      ).join(".");
+      addressValue = new Uint8Array(vBuffer.slice(addressValueIndex, addressValueIndex + addressLength)).join(".");
       break;
     case 2:
       addressLength = new Uint8Array(vBuffer.slice(addressValueIndex, addressValueIndex + 1))[0];
       addressValueIndex += 1;
-      addressValue = new TextDecoder().decode(
-        vBuffer.slice(addressValueIndex, addressValueIndex + addressLength)
-      );
+      addressValue = new TextDecoder().decode(vBuffer.slice(addressValueIndex, addressValueIndex + addressLength));
       break;
     case 3:
       addressLength = 16;
-      const dataView = new DataView(
-        vBuffer.slice(addressValueIndex, addressValueIndex + addressLength)
-      );
+      const dataView = new DataView(vBuffer.slice(addressValueIndex, addressValueIndex + addressLength));
       // 2001:0db8:85a3:0000:0000:8a2e:0370:7334
       const ipv6 = [];
       for (let i = 0; i < 8; i++) {
@@ -749,9 +737,7 @@ async function handleUDPOutBound(webSocket, vResponseHeader, log) {
             if (isVHeaderSent) {
               webSocket.send(await new Blob([udpSizeBuffer, dnsQueryResult]).arrayBuffer());
             } else {
-              webSocket.send(
-                await new Blob([vResponseHeader, udpSizeBuffer, dnsQueryResult]).arrayBuffer()
-              );
+              webSocket.send(await new Blob([vResponseHeader, udpSizeBuffer, dnsQueryResult]).arrayBuffer());
               isVHeaderSent = true;
             }
           }
@@ -821,27 +807,18 @@ ${vSec}
   const header = `
 <p align='center'><img src='https://cloudflare-ipfs.com/ipfs/bafybeigd6i5aavwpr6wvnwuyayklq3omonggta4x2q7kpmgafj357nkcky' alt='图片描述' style='margin-bottom: -50px;'>
 <b style='font-size: 15px;'>Welcome! This function generates configuration for VLESS protocol. If you found this useful, please check our GitHub project for more:</b>
-<b style='font-size: 15px;'>欢迎！这是生成 VLESS 协议的配置。如果您发现这个项目很好用，请查看我们的 GitHub 项目给我一个star：</b>
+<b style='font-size: 15px;'>欢迎！这是生成 VLESS 协议的配置。如果您发现这个项目很好用，请查看我们的 GitHub 项目: </b>
 <a href='https://github.com/3Kmfi6HP/EDtunnel' target='_blank'>EDtunnel - https://github.com/3Kmfi6HP/EDtunnel</a>
-<iframe src='https://ghbtns.com/github-btn.html?user=USERNAME&repo=REPOSITORY&type=star&count=true&size=large' frameborder='0' scrolling='0' width='170' height='30' title='GitHub'></iframe>
 <a href='//${hostName}/sub/${userIDArray[0]}' target='_blank'>VLESS 节点订阅连接</a>
 <a href='clash://install-config?url=${encodeURIComponent(
     `https://${hostName}/sub/${userIDArray[0]}?format=clash`
   )}}' target='_blank'>Clash for Windows 节点订阅连接</a>
 <a href='${clash_link}' target='_blank'>Clash 节点订阅连接</a>
 <a href='${subbestip}' target='_blank'>优选IP自动节点订阅</a>
-<a href='clash://install-config?url=${encodeURIComponent(
-    subbestip
-  )}' target='_blank'>Clash优选IP自动</a>
-<a href='sing-box://import-remote-profile?url=${encodeURIComponent(
-    subbestip
-  )}' target='_blank'>singbox优选IP自动</a>
-<a href='sn://subscription?url=${encodeURIComponent(
-    subbestip
-  )}' target='_blank'>nekobox优选IP自动</a>
-<a href='v2rayng://install-config?url=${encodeURIComponent(
-    subbestip
-  )}' target='_blank'>v2rayNG优选IP自动</a></p>`;
+<a href='clash://install-config?url=${encodeURIComponent(subbestip)}' target='_blank'>Clash优选IP自动</a>
+<a href='sing-box://import-remote-profile?url=${encodeURIComponent(subbestip)}' target='_blank'>singbox优选IP自动</a>
+<a href='sn://subscription?url=${encodeURIComponent(subbestip)}' target='_blank'>nekobox优选IP自动</a>
+<a href='v2rayng://install-config?url=${encodeURIComponent(subbestip)}' target='_blank'>v2rayNG优选IP自动</a></p>`;
 
   // HTML Head with CSS and FontAwesome library
   const htmlHead = `
@@ -858,11 +835,6 @@ ${vSec}
 	<meta property='og:image' content='https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
     vBaseConfig(userIDs.split(",")[0], hostName, 443, hostName, true)
   )}' />
-	<meta name='twitter:card' content='summary_large_image' />
-	<meta name='twitter:title' content='EDtunnel - VLESS configuration and subscribe output' />
-	<meta name='twitter:description' content='Use cloudflare pages and worker severless to implement v protocol' />
-	<meta name='twitter:url' content='https://${hostName}/' />
-	<meta name='twitter:image' content='https://cloudflare-ipfs.com/ipfs/bafybeigd6i5aavwpr6wvnwuyayklq3omonggta4x2q7kpmgafj357nkcky' />
 	<meta property='og:image:width' content='1500' />
 	<meta property='og:image:height' content='1500' />
 

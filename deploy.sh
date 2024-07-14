@@ -68,7 +68,7 @@ post_handle(){
 }
 warn_no_uuid(){
 	[ "$1" != "WORKER" ] && [ "$1" != "PAGE" ] && echo error $1 && return
-	echo "Warning: $1 $2 UUID is empty! you can set a repo secret named 'CF_${1}_UUID' or fill in cloudflare dashboard $1 settings then try again" | tee -a $GITHUB_STEP_SUMMARY
+	echo "Warning: $1 $2 UUID is empty! It is recommended that you set a repo secret named 'CF_${1}_UUID' or fill in cloudflare dashboard $1 settings then try again" | tee -a $GITHUB_STEP_SUMMARY
 }
 
 [ ! -s "$ENTRY" ] && echo "$ENTRY not found!" && exit 1;
@@ -88,6 +88,7 @@ deploy_worker(){
 		local nsid=`jq -r '.result.bindings[] | select(.name == "'$KV'") | .namespace_id' <<< $ret`
 		local uuid=`jq -r '.result.bindings[] | select(.name == "'$UUID'") | .text' <<< $ret`
 		compatDate=`jq -r '.result.compatibility_date' <<< $ret`
+		[ "$uuid" = null ] && uuid=
 		[ -z $uuid ] && warn_no_uuid WORKER $1
 		if [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ] || [ -z $compatDate ]; then
 			bindings=`generate_bindings $uuid`
@@ -114,6 +115,7 @@ deploy_page(){
 	else
 		local uuid=`jq -r '.[0].env_vars.'$UUID'.value' <<< $ret`
 		local nsid=`jq -r '.[0].kv_namespaces.'$KV'.namespace_id' <<< $ret`
+		[ "$uuid" = null ] && uuid=
 		if [ ! -z $2 ] && [ "$uuid" != "$2" ]; then
 			configs=`generate_configs $2`
 		elif [ -z $nsid ] || [ $nsid != $CF_NAMESPACE_ID ]; then
