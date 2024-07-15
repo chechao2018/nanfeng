@@ -87,7 +87,7 @@ export default class CF {
   loadKey(key) {
     if (this[key + "Loaded"]) return Promise.resolve();
     return this.KV.get(key).then(r => {
-      if (r) {
+      if (r && r instanceof Array && r.length) {
         this[key + "Raw"] = true;
         for (let e of r) this[key].add(e);
       }
@@ -99,7 +99,7 @@ export default class CF {
   loadProxys() {
     if (this.proxysLoaded) return Promise.resolve();
     return this.KV.get(this.KEY_PROXYS).then(r => {
-      if (r) {
+      if (r && typeof r == "object") {
         if (r instanceof Array) this.proxys[443] = r;
         else if ("443" in r) this.proxys = r;
         this.initProxy();
