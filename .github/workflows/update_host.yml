@@ -5,9 +5,10 @@ name: cfhost Workflow
 # Controls when the workflow will run
 on:
   schedule:
+    # every hour, get kv `cfhost`, test, merge and backup to kv `cfhost_bak`
     - cron: "0 * * * *"
+    # every week on sunday morning, test domain in cfhostpat.js
     - cron: "0 23 * * 6"
-    # - cron: "30 22 * * *"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     #  branches: [ "main" ]
@@ -151,9 +152,10 @@ jobs:
               #diff -b --suppress-common-lines remote.txt local.txt | grep '<' | sed 's/< *//' > remote.txt
               comm -23 <(sort remote.txt) <(sort local.txt) > tmp && mv tmp remote.txt
               # diff after manually update $CFHOSTPAT_JS
+              echo "diff $CFHOSTPAT_JS ..."
               local pat=`node $CFHOSTPAT_JS cfhostPat|sed -r 's|^/(.*)/$|\1|'`
               while read -r d; do
-                [[ $d =~ $pat ]] && sed -i '/'$d'/d' remote.txt
+                [[ $d =~ $pat ]] && sed -i '/'$d'/d' remote.txt && echo delete $d from remote.txt
               done < remote.txt
               echo "diff local, `wc -l remote.txt`" >> $GITHUB_STEP_SUMMARY
               
@@ -167,6 +169,9 @@ jobs:
               bak=`file_lines_tojson remote.txt`
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                 -d "$bak" "$CF_KV_API/$CFHOST_BAK"
+              [ $? = 0 ] && once_day && \
+                curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
+                  -d "" "$CF_KV_API/$CFHOST"
             fi
           }
           check_backup
