@@ -1,6 +1,6 @@
 // @ts-ignore
 import { connect } from "cloudflare:sockets";
-import CF, { cfhostPat, inCfcidr } from "./cfutil";
+import CF, { cfhostRE, inCfcidr } from "./cfutil";
 import proxys from "./proxys.json";
 import cfhost from "./cfhost.json";
 
@@ -345,7 +345,7 @@ async function handleTCPOutBound(
     remoteSocketToWS(tcpSocket, webSocket, vResponseHeader, log);
   }
   let r = undefined;
-  if (!cfhostPat.test(addressRemote) && !cf.cfhost.has(addressRemote) && !(r = inCfcidr(addressRemote))) {
+  if (!cfhostRE.test(addressRemote) && !cf.cfhost.has(addressRemote) && !(r = inCfcidr(addressRemote))) {
     const tcpSocket = await connectAndWrite(addressRemote, portRemote);
     // when remoteSocket is ready, pass to websocket
     // remote--> ws

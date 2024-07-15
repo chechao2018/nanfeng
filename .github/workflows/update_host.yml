@@ -7,7 +7,7 @@ on:
   schedule:
     # every hour, get kv `cfhost`, test, merge and backup to kv `cfhost_bak`
     - cron: "0 * * * *"
-    # every week on sunday morning, test domain in cfhostpat.js
+    # every week on sunday morning, test domain in cfhostpat.json
     - cron: "0 23 * * 6"
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
@@ -89,6 +89,7 @@ env:
   CFHOST_BAK: cfhost_bak
   CFHOST_JSON: src/cfhost.json
   CFHOSTPAT_JS: src/cfhostpat.js
+  CFHOSTPAT_JSON: src/cfhostpat.json
   PROXYS: proxys
   PROXYS_UPDATED: proxys_updated
   PROXYS_JSON: src/proxys.json
@@ -119,9 +120,9 @@ jobs:
 
           check_backup(){
             if once_week; then
-              echo check $CFHOSTPAT_JS ...
+              echo check $CFHOSTPAT_JSON ...
               node $CFHOSTPAT_JS toLines > pat.txt
-              filterhost pat.txt $CFHOSTPAT_JS
+              filterhost handlePat pat.txt
             fi
             
             json_array_tolines $CFHOST_JSON > local.txt
@@ -151,9 +152,9 @@ jobs:
                 
               #diff -b --suppress-common-lines remote.txt local.txt | grep '<' | sed 's/< *//' > remote.txt
               comm -23 <(sort remote.txt) <(sort local.txt) > tmp && mv tmp remote.txt
-              # diff after manually update $CFHOSTPAT_JS
-              echo "diff $CFHOSTPAT_JS ..."
-              local pat=`node $CFHOSTPAT_JS cfhostPat|sed -r 's|^/(.*)/$|\1|'`
+              # diff after manually update cfhostpat.json
+              echo "diff $CFHOSTPAT_JSON ..."
+              local pat=`node $CFHOSTPAT_JS cfhostRE|sed -r 's|^/(.*)/$|\1|'`
               while read -r d; do
                 [[ $d =~ $pat ]] && sed -i '/'$d'/d' remote.txt && echo delete $d from remote.txt
               done < remote.txt
@@ -184,10 +185,10 @@ jobs:
           AFTER: ${{ github.event.after }}
         run: |
           echo "check change.." >> $GITHUB_STEP_SUMMARY
-          if [ `git diff $CFHOST_JSON $CFHOSTPAT_JS | wc -l` != 0 ]; then
+          if [ `git diff $CFHOST_JSON $CFHOSTPAT_JSON | wc -l` != 0 ]; then
             git config user.name "GitHub Actions Bot"
             git config user.email "<>"
-            git add $CFHOST_JSON $CFHOSTPAT_JS
+            git add $CFHOST_JSON $CFHOSTPAT_JSON
             git commit -m "updated local $CFHOST"
             git push
             echo "local $CFHOST changed" >> $GITHUB_STEP_SUMMARY

@@ -1,5 +1,5 @@
 export { default as inCfcidr } from "./cfcidr";
-export { default as cfhostPat } from "./cfhostpat";
+export { default as cfhostRE } from "./cfhostpat";
 import kvWrap from "./kvWrap";
 
 if (!Set.prototype.toArray)
@@ -172,7 +172,7 @@ export default class CF {
   //   let r = 0;
   //   let hosts = ["cloudflare.com", "ip.sb", "a.a", "a.com", "1.1.1.1", "2.2.2.2"];
   //   hosts.forEach(h => {
-  //     if (!cfhostPat.test(h) && !this.cfhost.has(h) && !(r = inCfcidr(h))) {
+  //     if (!cfhostRE.test(h) && !this.cfhost.has(h) && !(r = inCfcidr(h))) {
   //       console.log(h, r);
   //       // r === false && this.tagCfhost(h);
   //     } else console.log("Hit proxy for", h);

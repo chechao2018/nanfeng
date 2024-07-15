@@ -24,28 +24,29 @@ async function handleLine(filename) {
   return domains;
 }
 
-//https://stackoverflow.com/questions/14177087/replace-a-string-in-a-file-with-nodejs
 async function handlePat(filename) {
   const domains = await handleLine(filename);
 
-  const file = "src/cfhostpat.js";
-  const { toArray, remove } = await dynamicImport(file);
-  fs.readFile(file, "utf8", (err, data) => {
+  const jsfile = "src/cfhostpat.js";
+  const { toArray, toObj } = await dynamicImport(jsfile);
+  const srcDomains = toArray();
+  if (domains.length == srcDomains.length) return;
+  const result = JSON.stringify(toObj(srcDomains.filter(v => domains.includes(v))), null, 2);
+  // console.log(result);
+  fs.writeFile("src/cfhostpat.json", result, "utf8", err => {
     if (err) return console.error(err);
-
-    const toRemove = [];
-    toArray().forEach(d => domains.includes(d) || toRemove.push(d));
-    const result = remove(data, toRemove);
-    // console.log(result);
-    fs.writeFile(file, result, "utf8", err => {
-      if (err) return console.error(err);
-    });
   });
 }
 
 const argv = process.argv.slice(2);
 if (argv.length == 1) handleLine(argv[0]).then(r => console.log(r.join("\n")));
-if (argv.length == 2) {
-  let i = argv.findIndex(a => /cfhostpat/.test(a));
-  i > -1 && handlePat(argv[argv.length - 1 - i]);
+else if (argv.length >= 2) {
+  const arg = argv.shift();
+  try {
+    const f = eval(arg);
+    if (typeof f == "function") f(...argv).then(console.log);
+    else if (typeof f != undefined) console.log(f.toString());
+  } catch (e) {
+    console.error("no function:", arg);
+  }
 }
