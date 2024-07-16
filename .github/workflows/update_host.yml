@@ -172,7 +172,7 @@ jobs:
                 -d "$bak" "$CF_KV_API/$CFHOST_BAK"
               if [ $? = 0 ] && once_day; then
                 curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
-                  -d "" "$CF_KV_API/$CFHOST"
+                  -d "[]" "$CF_KV_API/$CFHOST"
               fi
             fi
           }

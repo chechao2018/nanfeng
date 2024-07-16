@@ -43,7 +43,7 @@ else if (argv.length >= 2) {
   const arg = argv.shift();
   try {
     const f = eval(arg);
-    if (typeof f == "function") f(...argv).then(console.log);
+    if (typeof f == "function") f(...argv).then(r => r && console.log(r));
     else if (typeof f != undefined) console.log(f.toString());
   } catch (e) {
     console.error("no function:", arg);

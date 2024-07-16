@@ -51,17 +51,20 @@ const cfhostRE = new RegExp(
 export default cfhostRE;
 
 if (typeof process != "undefined") {
-  const argv = process.argv.slice(2);
-  const arg = argv.shift();
-  if (arg) {
-    try {
-      let r;
-      const f = eval(arg);
-      if (typeof f == "function") r = f(...argv);
-      else if (typeof f != undefined) r = f.toString();
-      r && console.log(r);
-    } catch (e) {
-      console.error("no function:", arg);
+  (function () {
+    if (!process.argv[1].includes("cfhostpat")) return;
+    const argv = process.argv.slice(2);
+    const arg = argv.shift();
+    if (arg) {
+      try {
+        let r;
+        const f = eval(arg);
+        if (typeof f == "function") r = f(...argv);
+        else if (typeof f != undefined) r = f.toString();
+        r && console.log(r);
+      } catch (e) {
+        console.error("no function:", arg);
+      }
     }
-  }
+  })();
 }
