@@ -170,9 +170,10 @@ jobs:
               bak=`file_lines_tojson remote.txt`
               curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                 -d "$bak" "$CF_KV_API/$CFHOST_BAK"
-              [ $? = 0 ] && once_day && \
+              if [ $? = 0 ] && once_day; then
                 curl -X PUT -H "Authorization:Bearer $CF_API_TOKEN" \
                   -d "" "$CF_KV_API/$CFHOST"
+              fi
             fi
           }
           check_backup
@@ -236,7 +237,7 @@ jobs:
       - name: deploy worker, page
         env:
           CF_PAGE_ENV: ${{env.pageBranch == 'main' && 'production' || 'preview'}}
-        run: bash ./deploy.sh
+        run: bash ./deploy.sh && echo "`date '+%Y-%m-%d %H:%M:%S %Z%z'` deploying success 🎉" >> $GITHUB_STEP_SUMMARY
 
   workflow-keepalive:
     if: ${{ github.event_name == 'schedule' }}

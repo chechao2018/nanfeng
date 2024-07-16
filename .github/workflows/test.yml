@@ -28,9 +28,16 @@ on:
         required: false
         default: ""
         type: "string"
+      kvKey:
+        description: "kv namespace key"
+        required: false
+        default: ""
+        type: "string"
 
 env:
-  multilines: '${{vars.MULTILINES}}'
+  multilines: "${{vars.MULTILINES}}"
+  CF_API_TOKEN: ${{secrets.CF_API_TOKEN}}
+  CF_KV_API: https://api.cloudflare.com/client/v4/accounts/${{secrets.CF_ACCOUNT_ID}}/storage/kv/namespaces/${{secrets.CF_NAMESPACE_ID || vars.CF_NAMESPACE_ID}}/values
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -44,12 +51,19 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
 
+      - name: kv test
+        if: ${{inputs.kvKey != ''}}
+        run: |
+          ret=`curl -H "Authorization:Bearer $CF_API_TOKEN" "$CF_KV_API/${{inputs.kvKey}}"`
+          echo ${{inputs.kvKey}}=$ret.
+
       - name: action test
         run: |
           echo ----multilines vars----
           echo '${{vars.MULTILINES}}'
           echo ----
           echo "$multilines"
+          TZ="Asia/Shanghai" date
 
       - name: comm test
         run: |
