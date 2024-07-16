@@ -5,7 +5,7 @@ import { pathToFileURL } from "url";
 import { createRequire } from "module";
 
 import inCfcidr from "../src/cfcidr.js";
-import { toArray, toObj } from "src/cfhostpat.js";
+import { toArray, toObj } from "../src/cfhostpat.js";
 
 //https://forum.linuxfoundation.org/discussion/861047/lab-7-1-err-unsupported-esm-url-scheme
 const { resolve } = createRequire(import.meta.url);
