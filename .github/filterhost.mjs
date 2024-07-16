@@ -5,6 +5,7 @@ import { pathToFileURL } from "url";
 import { createRequire } from "module";
 
 import inCfcidr from "../src/cfcidr.js";
+import { toArray, toObj } from "src/cfhostpat.js";
 
 //https://forum.linuxfoundation.org/discussion/861047/lab-7-1-err-unsupported-esm-url-scheme
 const { resolve } = createRequire(import.meta.url);
@@ -27,11 +28,9 @@ async function handleLine(filename) {
 async function handlePat(filename) {
   const domains = await handleLine(filename);
 
-  const jsfile = "src/cfhostpat.js";
-  const { toArray, toObj } = await dynamicImport(jsfile);
-  const srcDomains = toArray();
-  if (domains.length == srcDomains.length) return;
-  const result = JSON.stringify(toObj(srcDomains.filter(v => domains.includes(v))), null, 2);
+  // const { toArray, toObj } = await dynamicImport(jsfile);
+  if (domains.length == toArray().length) return;
+  const result = JSON.stringify(toObj(domains), null, 2);
   // console.log(result);
   fs.writeFile("src/cfhostpat.json", result, "utf8", err => {
     if (err) return console.error(err);

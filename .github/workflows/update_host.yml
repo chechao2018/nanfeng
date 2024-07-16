@@ -179,7 +179,7 @@ jobs:
           check_backup
 
       - id: check-change
-        name: check change of cfhost.json, proxys update time
+        name: check change of cfhost*.json, inputs.proxys data
         env:
           GH_TOKEN: ${{ github.token }}
           BEFORE: ${{ github.event.before }}

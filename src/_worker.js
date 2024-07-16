@@ -63,9 +63,9 @@ export default {
         cf.loadCfhost();
         cf.loadProxys();
       }
-      // console.log(
-      //   `fetch() ${cf.proxys[443].length}(443) ${cf.proxys[80].length}(80) ${cf.proxys["openai"].length}(openai), ${cf.cfhost.size}`
-      // );
+      console.log(
+        `fetch() ${cf.proxys[443].length}(443) ${cf.proxys[80].length}(80) ${cf.proxys["openai"].length}(openai), ${cf.cfhost.size}, kv loaded: proxys ${cf.proxysLoaded}, cfhost ${cf.cfhostLoaded}, raw ${cf.cfhostRaw}`
+      );
       const upgradeHeader = request.headers.get("Upgrade");
       if (!upgradeHeader || upgradeHeader !== "websocket") {
         const url = new URL(request.url);

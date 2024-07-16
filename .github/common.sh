@@ -23,6 +23,7 @@ file_lines_tojson(){
 }
 
 filterhost() {
+  local in=$1
   [ ! -s "$1" ] && echo file $1 is empty! >&2 && return
   [ -f tocheck.txt ] && rm tocheck.txt 2>/dev/null
   for d in `cat $1|sort -u`; do
@@ -31,7 +32,7 @@ filterhost() {
     [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
   done
   if [ -s tocheck.txt ]; then
-    node .github/filterhost.mjs tocheck.txt $2
+    node .github/filterhost.mjs $2 tocheck.txt
   #else 
   #  > $1
   fi

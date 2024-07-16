@@ -39,12 +39,12 @@ export default class CF {
   //_proxys; //entry
   proxys = { 443: [], 80: [], openai: [] };
   proxy = { 443: "", 80: "", openai: "" };
-  proxysLoaded;
+  proxysLoaded = false;
 
   _cfhost = new Set(); //entry
   cfhost = new Set(); //entry + cache
   cfhostRaw = false; //kv source
-  cfhostLoaded;
+  cfhostLoaded = false;
   cfhostPutting;
   constructor({ KV, proxys, cfhost = [] }) {
     if (KV) this.setKV(KV);
@@ -87,7 +87,7 @@ export default class CF {
   loadKey(key) {
     if (this[key + "Loaded"]) return Promise.resolve();
     return this.KV.get(key).then(r => {
-      if (r && r instanceof Array && r.length) {
+      if (r && r instanceof Array) {
         this[key + "Raw"] = true;
         for (let e of r) this[key].add(e);
       }
