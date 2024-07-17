@@ -118,36 +118,40 @@ jobs:
       - name: dig test
         if: ${{inputs.domain != ''}}
         run: |
-          dig -h
-
+          cat /etc/resolv.conf
           for d in ${{ inputs.domain }}; do
-            echo dig $d ......
-            echo ----short----
-            ip=$(dig +short @1.1.1.1 $d | grep -v '\.$' | head -n1)
-            [ ! -z "$ip" ] && echo $d $ip | tee -a tocheck.txt
+            echo dig $d ...
+            dig $d
+            dig $d @223.5.5.5
+            # dig $d @76.76.2.0
+            # dig $d @208.67.222.222
+            echo nslookup $d ...
+            nslookup $d
+            nslookup $d 223.5.5.5
+            # nslookup $d 76.76.2.0
+            # nslookup $d 208.67.222.222
           done
-          [ ! -f tocheck.txt ] && exit 0
+          # echo ----ipv6----
+          # for d in ${{ inputs.domain }}; do
+          #   echo dig $d ...
+          #   dig $d @2400:3200::1
+          #   dig $d @2001:4860:4860::8888
+          #   dig $d @2606:1a40::
+          #   dig $d @2620:119:35::35
+          #   dig $d @2606:4700:4700::1111
+          #   dig $d @2a10:50c0::ad1:ff
+          #   echo nslookup $d ...
+          #   nslookup $d 2400:3200::1
+          #   nslookup $d 2001:4860:4860::8888
+          #   nslookup $d 2606:1a40::
+          #   nslookup $d 2620:119:35::35
+          #   nslookup $d 2606:4700:4700::1111
+          #   nslookup $d 2a10:50c0::ad1:ff
+          # done
 
-          [ -f src/cfcidr.js ] && mv src/cfcidr.js src/cfcidr.mjs
-          cat > checkip.mjs <<-EOF
-          import fs from 'node:fs';
-          import readline from 'node:readline';
-          import inCfSubNet from './cfcidr.mjs';
-
-          async function processLine(filename) {
-            const fileStream = fs.createReadStream(filename);
-            const rl = readline.createInterface({
-              input: fileStream,
-              crlfDelay: Infinity,
-            });
-            for await (const line of rl) {
-              const [d,ip] = line.split(' ')
-              ip && inCfSubNet(ip) && console.log(d);
-            }
-          }
-          processLine(process.argv[2]);
-          EOF
-
-          node checkip.mjs tocheck.txt > cf.txt
-          echo -------------------------
-          cat cf.txt
+          echo ----trace----
+          for d in ${{ inputs.domain }}; do
+            echo dig $d ...
+            dig $d +trace
+            dig $d @223.5.5.5 +trace
+          done

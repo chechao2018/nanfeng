@@ -1,7 +1,7 @@
 import cfhostpat from "./cfhostpat.json" assert { type: "json" };
 
 const cfdomain =
-  "cloudflare(previews|stream|storage|workers|-ipfs|-dns)?.(com|tv|dev)|(workers|pages).dev|one.one.one.one";
+  "cloudflare(insights|previews|stream|storage|workers|-ipfs|-dns)?.(com|tv|dev)|(workers|pages).dev|one.one.one.one";
 
 export function remove(data, domains) {
   let pat,

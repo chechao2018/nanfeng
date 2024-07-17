@@ -23,13 +23,13 @@ file_lines_tojson(){
 }
 
 filterhost() {
-  local in=$1
   [ ! -s "$1" ] && echo file $1 is empty! >&2 && return
   [ -f tocheck.txt ] && rm tocheck.txt 2>/dev/null
   for d in `cat $1|sort -u`; do
-    #dig +short @1.1.1.1 $d 
-    ip=$(dig +short @1.1.1.1 $d | grep -v '\.$' | head -n1)
-    [ ! -z "$ip" ] && echo $ip $d >> tocheck.txt
+    local ip=$(dig +short $d | grep -v '\.$' | head -n1)
+    [ -z "$ip" ] && continue
+    [ "$ip" = '1.1.1.1' ] && ip=$(dig +short $d @223.5.5.5 | grep -v '\.$' | head -n1)
+    [ ! -z "$ip" ] && [ "$ip" != '1.1.1.1' ] && echo $ip $d >> tocheck.txt
   done
   if [ -s tocheck.txt ]; then
     node .github/filterhost.mjs $2 tocheck.txt
