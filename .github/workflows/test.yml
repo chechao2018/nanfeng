@@ -122,14 +122,16 @@ jobs:
           for d in ${{ inputs.domain }}; do
             echo dig $d ...
             dig $d
+            dig $d @8.8.8.8
             dig $d @223.5.5.5
-            # dig $d @76.76.2.0
-            # dig $d @208.67.222.222
+            dig $d @76.76.2.0
+            dig $d @208.67.222.222
             echo nslookup $d ...
             nslookup $d
+            nslookup $d 8.8.8.8
             nslookup $d 223.5.5.5
-            # nslookup $d 76.76.2.0
-            # nslookup $d 208.67.222.222
+            nslookup $d 76.76.2.0
+            nslookup $d 208.67.222.222
           done
           # echo ----ipv6----
           # for d in ${{ inputs.domain }}; do
