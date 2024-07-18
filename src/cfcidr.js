@@ -37,7 +37,7 @@ export default function inCfcidr(host, list = cfcidr) {
 	} else return domainPat.test(host) ? false : undefined;
   
 	if (ipMid < list[0][0])
-		return false; //
+		return 0; //
 	// Binary search
 	let x = 0, y = list.length-1, mid;
 	while (x <= y) {
