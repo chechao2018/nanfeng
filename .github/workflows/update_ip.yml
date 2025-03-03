@@ -61,16 +61,17 @@ jobs:
         run: |
           [ -z ${{secrets.CF_ACCOUNT_ID}} ] || [ -z $CF_API_TOKEN ] || [ -z $CF_NAMESPACE_ID ] && echo "secrets and CF_NAMESPACE_ID required!" && exit 1;
           #curl -o ip.zip https://zip.baipiao.eu.org
-          #unzip ip.zip -d ip
-          #cat ip/*.txt | sort | uniq > ip.txt
-          url='https://ipupdate.baipiao.eu.org'
+          url='https://zip.baipiao.eu.org'
           touch ip.txt
           cnt=0
-          while [ $cnt -lt 5 ] && ! curl --connect-timeout 10 --retry 1 -o ip.txt "$url"; do
+          while [ $cnt -lt 5 ] && ! curl --connect-timeout 10 --retry 1 -o ip.zip "$url"; do
             sleep 1
             cnt=$(($cnt+1))
             echo 'retry...'
           done
+          [ -s ip.zip ] || (echo "Failed to download ip data from $url!" && exit 1);
+          unzip ip.zip -d ip
+          cat ip/*.txt | sort | uniq > ip.txt
           echo ipupdate `wc -l ip.txt` | tee $GITHUB_STEP_SUMMARY
 
       - name: backup original data, merge
