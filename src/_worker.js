@@ -11,23 +11,7 @@ let userID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 // reversed proxy (Non-CF ISP)
 //const proxys = ["edgetunnel.anycast.eu.org","cdn.xn--b6gac.eu.org","cdn-b100.xn--b6gac.eu.org","cdn-all.xn--b6gac.eu.org"]
 // Anycast/cloudflare.com
-const domains = [
-  "www.okcupid.com",
-  "www.pcmag.com",
-  "fbi.gov",
-  "www.visa.com.sg",
-  "www.sean-now.com",
-  "www.wto.org",
-  "edtunnel-dgp.pages.dev",
-  "ip.sb",
-  "www.digitalocean.com",
-  "www.visa.com",
-  "www.visa.com.tw",
-  "iplocation.io",
-  "www.udemy.com",
-  "download.yunzhongzhuan.com",
-  "whatismyipaddress.com",
-];
+const domains = ["5ch.net","arca.live","brainly.com","cambridge.org","donmai.us","emojipedia.org","fbi.gov","feedback.bit.ly","fontawesome.com","freecodecamp.org","getbootstrap.com","gur.gov.ua","hdmoli.com","hubspot.com","hugedomains.com","icook.tw","indeed.com","ip.sb","iplocation.io","japan.com","leetcode.com","mdpi.com","noodlemagazine.com","okcupid.com","pcmag.com","philosophy.hku.hk","quillbot.com","russia.com","singapore.com","smallseotools.com","time.is","try.tp-link.com","udemy.com","visa.com","visa.com.hk","visa.com.sg","visa.com.tw","whatismyip.com","wto.org","www.gov.se"];
 
 // if you want to use ipv6 or single proxy, please add comment at this line and remove comment at the next line
 // use single proxy instead of random
